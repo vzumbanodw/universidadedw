@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, type ChangeEvent } from "react";
-import { ImageIcon, Upload, Video, X } from "lucide-react";
+import { useRef, useState, type ChangeEvent } from "react";
+import { ImageIcon, Loader2, Upload, Video, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type MediaFieldProps = {
@@ -15,10 +15,12 @@ type MediaFieldProps = {
 };
 
 /**
- * Campo de mídia do backoffice. Aceita uma URL (CDN/streaming) ou, como
- * conveniência de protótipo, o upload de um arquivo local convertido em data
- * URL para pré-visualização. Em produção, o upload enviaria para storage e
- * gravaria apenas a URL e o restante do formulário não muda.
+ * Campo de mídia do backoffice.
+ *
+ * - Imagens (`kind="image"`): aceita uma URL OU envia o arquivo para o Supabase
+ *   Storage (bucket `media`, via `/api/admin/media`) e grava a URL pública.
+ * - Vídeo (`kind="video"`): apenas URL (cole o link do YouTube/Vimeo). O player
+ *   do aluno faz o embed.
  */
 export function MediaField({
   label,
@@ -29,16 +31,33 @@ export function MediaField({
   variant = "default",
 }: MediaFieldProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const Icon = kind === "video" ? Video : ImageIcon;
   const hasValue = Boolean(value);
+  const canUpload = kind === "image";
 
-  function onFile(event: ChangeEvent<HTMLInputElement>) {
+  async function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () =>
-      onChange(typeof reader.result === "string" ? reader.result : undefined);
-    reader.readAsDataURL(file);
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setUploadError(data.error ?? "Falha no upload.");
+        return;
+      }
+      onChange(data.url);
+    } catch {
+      setUploadError("Falha de rede no upload.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   }
 
   const urlInput = (
@@ -49,7 +68,7 @@ export function MediaField({
         onChange={(e) => onChange(e.target.value || undefined)}
         placeholder={
           kind === "video"
-            ? "https://player.vimeo.com/video/…"
+            ? "https://www.youtube.com/watch?v=…"
             : "https://cdn.dataweb.com/imagem.jpg"
         }
         className="h-full w-full min-w-0 flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-placeholder outline-none"
@@ -57,26 +76,31 @@ export function MediaField({
     </div>
   );
 
-  const uploadButton = (
+  const uploadButton = canUpload ? (
     <button
       type="button"
       onClick={() => fileRef.current?.click()}
-      className="inline-flex h-9 w-fit shrink-0 items-center gap-2 rounded-regular border border-border-default bg-background-elevated px-3 text-[13px] font-medium text-foreground-subtitle transition-colors hover:bg-background-subtle hover:text-foreground"
+      disabled={uploading}
+      className="inline-flex h-9 w-fit shrink-0 items-center gap-2 rounded-regular border border-border-default bg-background-elevated px-3 text-[13px] font-medium text-foreground-subtitle transition-colors hover:bg-background-subtle hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
     >
-      <Upload className="h-3.5 w-3.5" aria-hidden />
-      Enviar {kind === "video" ? "vídeo" : "imagem"}
+      {uploading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+      ) : (
+        <Upload className="h-3.5 w-3.5" aria-hidden />
+      )}
+      {uploading ? "Enviando…" : "Enviar imagem"}
     </button>
-  );
+  ) : null;
 
-  const fileInput = (
+  const fileInput = canUpload ? (
     <input
       ref={fileRef}
       type="file"
-      accept={kind === "video" ? "video/*" : "image/*"}
+      accept="image/*"
       onChange={onFile}
       className="hidden"
     />
-  );
+  ) : null;
 
   function RemoveButton() {
     if (!hasValue) return null;
@@ -91,6 +115,12 @@ export function MediaField({
       </button>
     );
   }
+
+  const errorNode = uploadError ? (
+    <p role="alert" className="text-[12px] text-foreground-error">
+      {uploadError}
+    </p>
+  ) : null;
 
   /* ----------------------------- Avatar ----------------------------------- */
   if (variant === "avatar") {
@@ -112,6 +142,7 @@ export function MediaField({
             {uploadButton}
           </div>
         </div>
+        {errorNode}
         {hint ? <p className="text-[12px] text-foreground-muted">{hint}</p> : null}
         {fileInput}
       </div>
@@ -136,7 +167,7 @@ export function MediaField({
           <div className="flex flex-col items-center gap-1.5 text-foreground-muted">
             <Icon className="h-6 w-6" aria-hidden />
             <span className="text-[12px]">
-              {kind === "video" ? "Vídeo" : "Imagem"} · cole a URL ou envie
+              {kind === "video" ? "Cole a URL do YouTube" : "Imagem · cole a URL ou envie"}
             </span>
           </div>
         )}
@@ -148,6 +179,7 @@ export function MediaField({
         {uploadButton}
       </div>
 
+      {errorNode}
       {hint ? <p className="text-[12px] text-foreground-muted">{hint}</p> : null}
       {fileInput}
     </div>

@@ -116,7 +116,22 @@ export function TrackCategoryCard({ category }: { category: TrackCategory }) {
           accent.coverGradient,
         )}
       >
-        <div aria-hidden className="absolute inset-0 bg-grid-pattern-subtle opacity-50" />
+        {category.coverImageUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={category.coverImageUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent"
+            />
+          </>
+        ) : (
+          <div aria-hidden className="absolute inset-0 bg-grid-pattern-subtle opacity-50" />
+        )}
         <div className="absolute left-5 top-5">
           <span
             aria-hidden

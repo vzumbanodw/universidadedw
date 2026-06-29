@@ -36,4 +36,6 @@ export type TrackCategory = {
   completed: number;
   progressPct: number;
   href: string;
+  /** Capa da categoria (URL pública no Supabase Storage). */
+  coverImageUrl?: string;
 };

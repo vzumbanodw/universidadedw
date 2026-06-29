@@ -115,7 +115,22 @@ export function CourseCard({ course }: { course: Course }) {
       )}
     >
       <div className={cn("relative h-[118px] overflow-hidden bg-gradient-to-br", accent.cover)}>
-        <div aria-hidden className="absolute inset-0 bg-grid-pattern-subtle opacity-60" />
+        {course.coverImageUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={course.coverImageUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent"
+            />
+          </>
+        ) : (
+          <div aria-hidden className="absolute inset-0 bg-grid-pattern-subtle opacity-60" />
+        )}
         <div className="absolute left-4 top-4 flex max-w-[calc(100%-2rem)] flex-wrap gap-1.5">
           {course.featured ? (
             <Badge variant="orange" size="sm">

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Progress } from "@/components/ui/Progress";
 import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/lib/formatters";
+import { getVideoEmbed } from "@/lib/video";
 import type { Course, CourseLesson } from "@/types/courses";
 
 type CoursePlayerProps = {
@@ -42,6 +43,7 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
   const selectedLesson = lessons[selectedIndex] ?? lessons[0]!;
   const completedCount = lessons.filter((lesson) => lesson.completed).length;
   const selectedNumber = selectedIndex + 1;
+  const embed = getVideoEmbed(selectedLesson.videoUrl);
 
   function goTo(delta: number) {
     setSelectedIndex((current) =>
@@ -53,68 +55,116 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
     <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="flex min-w-0 flex-col gap-5">
         <div className="overflow-hidden rounded-medium border border-border-subtle bg-background-elevated shadow-elevation-sm">
-          <div className="relative aspect-video min-h-[240px] overflow-hidden bg-brand-dark">
-            <div aria-hidden className="absolute inset-0 bg-grid-pattern opacity-70" />
-            <div
-              aria-hidden
-              className="absolute inset-0"
-              style={{
-                backgroundImage: [
-                  "radial-gradient(60% 60% at 20% 20%, rgba(0, 160, 177, 0.28), transparent 70%)",
-                  "radial-gradient(45% 50% at 90% 90%, rgba(251, 176, 64, 0.18), transparent 72%)",
-                  "linear-gradient(135deg, rgba(7, 17, 28, 0.10), rgba(7, 17, 28, 0.86))",
-                ].join(", "),
-              }}
-            />
-            <div className="relative flex h-full min-h-[240px] flex-col justify-between p-5 sm:p-7">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="primary" size="sm">
-                  Aula {selectedNumber}
-                </Badge>
-                <Badge variant={selectedLesson.completed ? "success" : "orange"} size="sm" dot>
-                  {selectedLesson.completed ? "Concluída" : "Em andamento"}
-                </Badge>
+          {embed ? (
+            <>
+              <div className="relative aspect-video w-full bg-black">
+                {embed.kind === "iframe" ? (
+                  <iframe
+                    key={embed.src}
+                    src={embed.src}
+                    title={selectedLesson.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="absolute inset-0 h-full w-full border-0"
+                  />
+                ) : (
+                  <video
+                    key={embed.src}
+                    src={embed.src}
+                    controls
+                    className="absolute inset-0 h-full w-full bg-black"
+                  />
+                )}
               </div>
-
-              <div className="flex flex-col items-start gap-5 sm:max-w-[72%]">
-                <button
-                  type="button"
-                  aria-label={`Reproduzir ${selectedLesson.title}`}
-                  className="group inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/12 text-white shadow-elevation-lg backdrop-blur-md transition-transform hover:scale-[1.03]"
-                >
-                  <Play className="ml-1 h-7 w-7 fill-current" aria-hidden />
-                </button>
-                <div>
-                  <p className="mb-2 text-[12px] font-medium uppercase tracking-[0.16em] text-white/55">
-                    {course.categoryName} · {course.format}
-                  </p>
-                  <h2 className="text-balance text-[24px] font-semibold leading-tight tracking-tight text-white sm:text-[30px]">
-                    {selectedLesson.title}
-                  </h2>
-                  <p className="mt-2 max-w-[64ch] text-[14px] leading-relaxed text-white/70">
+              <div className="flex flex-col gap-1.5 border-t border-border-subtle px-5 py-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="primary" size="sm">
+                    Aula {selectedNumber}
+                  </Badge>
+                  <Badge variant={selectedLesson.completed ? "success" : "orange"} size="sm" dot>
+                    {selectedLesson.completed ? "Concluída" : "Em andamento"}
+                  </Badge>
+                  <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-foreground-muted">
+                    <Clock className="h-3.5 w-3.5" aria-hidden />
+                    {formatMinutes(selectedLesson.durationMinutes)}
+                  </span>
+                </div>
+                <h2 className="text-[18px] font-semibold leading-snug tracking-tight text-foreground-heading">
+                  {selectedLesson.title}
+                </h2>
+                {selectedLesson.description ? (
+                  <p className="text-[13px] leading-relaxed text-foreground-muted">
                     {selectedLesson.description}
                   </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 text-[12px] text-white/65">
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" aria-hidden />
-                  {formatMinutes(selectedLesson.durationMinutes)}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <PlayCircle className="h-3.5 w-3.5" aria-hidden />
-                  Videoaula
-                </span>
-                {course.certificate ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Award className="h-3.5 w-3.5" aria-hidden />
-                    Curso com certificado
-                  </span>
                 ) : null}
               </div>
+            </>
+          ) : (
+            <div className="relative aspect-video min-h-[240px] overflow-hidden bg-brand-dark">
+              <div aria-hidden className="absolute inset-0 bg-grid-pattern opacity-70" />
+              <div
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: [
+                    "radial-gradient(60% 60% at 20% 20%, rgba(0, 160, 177, 0.28), transparent 70%)",
+                    "radial-gradient(45% 50% at 90% 90%, rgba(251, 176, 64, 0.18), transparent 72%)",
+                    "linear-gradient(135deg, rgba(7, 17, 28, 0.10), rgba(7, 17, 28, 0.86))",
+                  ].join(", "),
+                }}
+              />
+              <div className="relative flex h-full min-h-[240px] flex-col justify-between p-5 sm:p-7">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="primary" size="sm">
+                    Aula {selectedNumber}
+                  </Badge>
+                  <Badge variant={selectedLesson.completed ? "success" : "orange"} size="sm" dot>
+                    {selectedLesson.completed ? "Concluída" : "Em andamento"}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-col items-start gap-5 sm:max-w-[72%]">
+                  <span
+                    aria-hidden
+                    className="inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/12 text-white shadow-elevation-lg backdrop-blur-md"
+                  >
+                    <Play className="ml-1 h-7 w-7 fill-current" aria-hidden />
+                  </span>
+                  <div>
+                    <p className="mb-2 text-[12px] font-medium uppercase tracking-[0.16em] text-white/55">
+                      {course.categoryName} · {course.format}
+                    </p>
+                    <h2 className="text-balance text-[24px] font-semibold leading-tight tracking-tight text-white sm:text-[30px]">
+                      {selectedLesson.title}
+                    </h2>
+                    <p className="mt-2 max-w-[64ch] text-[14px] leading-relaxed text-white/70">
+                      {selectedLesson.description}
+                    </p>
+                    <p className="mt-3 text-[12px] text-white/50">
+                      Sem vídeo nesta aula. Adicione a URL do YouTube no backoffice.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 text-[12px] text-white/65">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" aria-hidden />
+                    {formatMinutes(selectedLesson.durationMinutes)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <PlayCircle className="h-3.5 w-3.5" aria-hidden />
+                    Videoaula
+                  </span>
+                  {course.certificate ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Award className="h-3.5 w-3.5" aria-hidden />
+                      Curso com certificado
+                    </span>
+                  ) : null}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <article className="rounded-medium border border-border-subtle bg-background-elevated p-5 shadow-elevation-sm sm:p-6">

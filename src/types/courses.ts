@@ -23,6 +23,8 @@ export type Course = {
   featured?: boolean;
   certificate?: boolean;
   href: string;
+  /** Capa do curso (URL pública no Supabase Storage). */
+  coverImageUrl?: string;
 };
 
 export type CourseLessonResource = {
@@ -39,4 +41,6 @@ export type CourseLesson = {
   contentTitle: string;
   contentBlocks: string[];
   resources: CourseLessonResource[];
+  /** URL do vídeo da aula (YouTube/Vimeo/arquivo). Tocada no player. */
+  videoUrl?: string;
 };

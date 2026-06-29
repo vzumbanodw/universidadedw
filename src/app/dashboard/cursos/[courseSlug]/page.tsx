@@ -38,6 +38,7 @@ function toCourseLesson(lesson: AdminLesson): CourseLesson {
     contentTitle: lesson.contentTitle,
     contentBlocks: lesson.contentBlocks,
     resources: lesson.resources.map((r) => ({ label: r.label, type: r.type })),
+    videoUrl: lesson.videoUrl,
   };
 }
 
@@ -91,6 +92,17 @@ export default async function CourseDetailPage({ params }: PageProps) {
             {course.title}
           </span>
         </nav>
+
+        {course.coverImageUrl ? (
+          <div className="relative h-40 w-full overflow-hidden rounded-medium border border-border-subtle sm:h-48">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={course.coverImageUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : null}
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
           <div className="min-w-0">

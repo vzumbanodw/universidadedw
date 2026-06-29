@@ -88,10 +88,12 @@ export function LoginForm() {
       <p className="text-center text-[13px] leading-relaxed text-foreground-disabled">
         O acesso é fornecido pela sua empresa. Sem login?{" "}
         <a
-          href="mailto:suporte@dataweb.com.br?subject=Acesso%20%C3%A0%20Universidade"
+          href="https://suporte.dataweb.com.br/hc/pt-br/requests/new"
+          target="_blank"
+          rel="noreferrer"
           className="font-medium text-foreground-brand underline-offset-4 hover:underline"
         >
-          Fale com o administrador
+          Falar com o suporte
         </a>
       </p>
     </form>
