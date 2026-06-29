@@ -1,0 +1,281 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design Tokens — Dataweb / Universidade
+ * Generated from Mode 1.tokens 2.json (primitives)
+ *               + Mode 1.tokens.json   (semantic aliases)
+ *
+ * Strategy:
+ * - :root      → LIGHT theme (used by /login)
+ * - .dark      → DARK theme  (default for /dashboard and authenticated app)
+ * Semantic tokens flip between themes; primitives never change.
+ */
+:root {
+  /* ---------- Primitives — Brand ---------- */
+  --brand-blue-primary: #00A0B1;
+  --brand-blue-secondary: #00394A;
+  --brand-blue-tertiary: #1D6076;
+  --brand-blue-dark: #12263A;
+  --brand-orange: #FBB040;
+  --brand-green: #A6CE39;
+
+  /* ---------- Primitives — Neutrals ---------- */
+  --white: #FFFFFF;
+  --black: #000000;
+  --grey-50: #FAFAFA;
+  --grey-100: #F4F4F4;
+  --grey-200: #E5E5E5;
+  --grey-300: #D4D4D4;
+  --grey-400: #A3A3A3;
+  --grey-500: #737373;
+  --grey-600: #525252;
+  --grey-700: #404040;
+  --grey-800: #222222;
+  --grey-900: #171717;
+
+  /* ---------- Primitives — Feedback ---------- */
+  --green-success: #009680;
+  --green-success-subtle: #D1FADF;
+  --red-error: #F8473A;
+  --red-error-subtle: #FFE0DA;
+  --orange-warning: #F4A000;
+  --orange-warning-subtle: #FFE2AA;
+  --blue-information: #0047FF;
+  --blue-information-subtle: #D8E3FF;
+
+  /* ---------- Semantic — Surfaces (LIGHT) ---------- */
+  --background: var(--white);
+  --background-subtle: var(--grey-50);
+  --background-elevated: var(--white);
+  --surface: var(--white);
+  --surface-elevated: var(--white);
+  --surface-muted: var(--grey-50);
+  --background-header: var(--brand-blue-dark);
+  --background-success: var(--green-success-subtle);
+  --background-error: var(--red-error-subtle);
+  --background-warning: var(--orange-warning-subtle);
+  --background-information: var(--blue-information-subtle);
+
+  /* ---------- Semantic — Button ---------- */
+  --button-primary: var(--brand-blue-secondary);
+  --button-secondary: var(--brand-blue-tertiary);
+
+  /* ---------- Semantic — Text ---------- */
+  --text-heading: var(--black);
+  --text-title: var(--black);
+  --text-subtitle: var(--grey-800);
+  --text-body: var(--black);
+  --text-muted: var(--grey-500);
+  --text-brand: var(--brand-blue-secondary);
+  --text-placeholder: var(--grey-300);
+  --text-disabled: var(--grey-500);
+  --text-success: var(--green-success);
+  --text-error: var(--red-error);
+  --text-warning: var(--orange-warning);
+  --text-information: var(--blue-information);
+
+  /* ---------- Semantic — Border ---------- */
+  --border-default: var(--grey-300);
+  --border-subtle: var(--grey-200);
+  --border-strong: var(--grey-400);
+  --border-disabled: var(--grey-500);
+  --border-success: var(--green-success);
+  --border-error: var(--red-error);
+  --border-warning: var(--orange-warning);
+  --border-information: var(--blue-information);
+
+  /* ---------- Semantic — Iconography ---------- */
+  --icon-default: var(--black);
+  --icon-brand: var(--brand-blue-secondary);
+  --icon-subtle: var(--grey-300);
+  --icon-muted: var(--grey-500);
+  --icon-disabled: var(--grey-500);
+  --icon-success: var(--green-success);
+  --icon-error: var(--red-error);
+  --icon-warning: var(--orange-warning);
+  --icon-information: var(--blue-information);
+
+  /* ---------- Ring / Focus ---------- */
+  --ring: var(--brand-blue-primary);
+
+  /* ---------- Border radius ---------- */
+  --radius-tiny: 2px;
+  --radius-small: 4px;
+  --radius-regular: 8px;
+  --radius-medium: 12px;
+  --radius-large: 16px;
+  --radius-full: 99px;
+
+  /* ---------- Border width ---------- */
+  --border-width-tiny: 1px;
+  --border-width-regular: 1.5px;
+  --border-width-medium: 2px;
+  --border-width-big: 4px;
+
+  /* ---------- Typography ---------- */
+  --font-primary: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --font-secondary: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- DARK theme (default for app) ---------- */
+.dark {
+  /* Surfaces */
+  --background: #07111c;
+  --background-subtle: #0a1521;
+  --background-elevated: #0f1f30;
+  --surface: #0f1f30;
+  --surface-elevated: #142a3f;
+  --surface-muted: #0a1521;
+  --background-header: #07111c;
+  --background-success: rgba(0, 150, 128, 0.12);
+  --background-error: rgba(248, 71, 58, 0.14);
+  --background-warning: rgba(244, 160, 0, 0.14);
+  --background-information: rgba(0, 71, 255, 0.16);
+
+  /* Text */
+  --text-heading: #F2F6FB;
+  --text-title: #F2F6FB;
+  --text-subtitle: #C6D2DF;
+  --text-body: #DAE2EC;
+  --text-muted: #7F92A8;
+  --text-brand: var(--brand-blue-primary);
+  --text-placeholder: #4A5B71;
+  --text-disabled: #506379;
+  --text-success: #3DD9B5;
+  --text-error: #FF7A6E;
+  --text-warning: #F7B544;
+  --text-information: #6C90FF;
+
+  /* Borders */
+  --border-default: #1F3550;
+  --border-subtle: #16263B;
+  --border-strong: #2A466A;
+  --border-disabled: #2A466A;
+  --border-success: #2EAE92;
+  --border-error: #FF7A6E;
+  --border-warning: #F7B544;
+  --border-information: #6C90FF;
+
+  /* Icons */
+  --icon-default: #DAE2EC;
+  --icon-brand: var(--brand-blue-primary);
+  --icon-subtle: #506379;
+  --icon-muted: #7F92A8;
+  --icon-disabled: #3A506A;
+  --icon-success: #3DD9B5;
+  --icon-error: #FF7A6E;
+  --icon-warning: #F7B544;
+  --icon-information: #6C90FF;
+
+  /* Buttons */
+  --button-primary: var(--brand-blue-primary);
+  --button-secondary: var(--brand-blue-tertiary);
+
+  --ring: var(--brand-blue-primary);
+}
+
+/* ---------- Base layer ---------- */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--text-body);
+    font-family: var(--font-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+  }
+
+  ::selection {
+    background: rgba(0, 160, 177, 0.32);
+    color: var(--text-heading);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-small);
+  }
+
+  input:focus-visible,
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: none;
+  }
+
+  /* Custom thin scrollbar — only on dark surfaces */
+  .dark ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .dark ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #1F3550;
+    border-radius: 99px;
+    border: 2px solid var(--background);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #2A466A;
+  }
+}
+
+/* ---------- Utilities ---------- */
+@layer utilities {
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .bg-grid-pattern-subtle {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .bg-radial-glow {
+    background-image:
+      radial-gradient(60% 50% at 20% 10%, rgba(0, 160, 177, 0.18), transparent 60%),
+      radial-gradient(50% 40% at 90% 90%, rgba(251, 176, 64, 0.10), transparent 70%);
+  }
+
+  .bg-hero-glow {
+    background-image:
+      radial-gradient(80% 60% at 10% 10%, rgba(0, 160, 177, 0.22), transparent 65%),
+      radial-gradient(60% 80% at 95% 90%, rgba(29, 96, 118, 0.32), transparent 70%),
+      radial-gradient(50% 50% at 70% 30%, rgba(166, 206, 57, 0.06), transparent 70%);
+  }
+
+  .shadow-inner-border {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Mask used by progress shimmer */
+  .mask-shimmer {
+    -webkit-mask-image: linear-gradient(90deg, transparent, black 35%, black 65%, transparent);
+            mask-image: linear-gradient(90deg, transparent, black 35%, black 65%, transparent);
+  }
+}
