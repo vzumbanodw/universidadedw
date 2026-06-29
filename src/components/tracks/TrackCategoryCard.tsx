@@ -13,7 +13,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { Progress } from "@/components/ui/Progress";
+import { slugify } from "@/lib/admin/options";
 import { cn } from "@/lib/utils";
 import type { TrackCategory, TrackCategoryAccent, TrackCategoryIcon } from "@/types/tracks";
 
@@ -94,131 +94,118 @@ const ACCENTS: Record<TrackCategoryAccent, AccentStyle> = {
   },
 };
 
+/** Slug de navegação da categoria — mesma regra usada na página de detalhe. */
+export function trackCategorySlug(category: { name: string }): string {
+  return slugify(category.name);
+}
+
+/**
+ * Card de aplicação/módulo em formato pôster retrato (capa 1280×1808). Leva para
+ * a página de detalhe que lista os cursos da categoria.
+ */
 export function TrackCategoryCard({ category }: { category: TrackCategory }) {
   const Icon = ICONS[category.iconKey];
   const accent = ACCENTS[category.accent];
+  const href = `/dashboard/trilhas/${trackCategorySlug(category)}`;
 
   return (
     <Link
-      href={category.href}
+      href={href}
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-medium border border-border-subtle bg-background-elevated",
+        "group relative flex aspect-[1280/1808] flex-col justify-end overflow-hidden rounded-medium border border-border-subtle bg-background-elevated",
         "shadow-elevation-sm transition-[box-shadow,transform,border-color] duration-200",
         "ring-1 ring-transparent",
         "hover:-translate-y-0.5 hover:border-border-default hover:shadow-elevation-md",
         accent.ring,
       )}
     >
-      {/* Cover */}
-      <div
+      {/* Capa */}
+      {category.coverImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={category.coverImageUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div
+          aria-hidden
+          className={cn("absolute inset-0 bg-gradient-to-br", accent.coverGradient)}
+        >
+          <div className="absolute inset-0 bg-grid-pattern-subtle opacity-50" />
+        </div>
+      )}
+
+      {/* Ícone */}
+      <span
+        aria-hidden
         className={cn(
-          "relative h-[92px] overflow-hidden bg-gradient-to-br",
-          accent.coverGradient,
+          "absolute left-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-medium shadow-elevation-sm",
+          "border border-white/60 backdrop-blur-sm",
+          accent.iconBg,
+          accent.iconText,
         )}
       >
-        {category.coverImageUrl ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={category.coverImageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div
-              aria-hidden
-              className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent"
-            />
-          </>
-        ) : (
-          <div aria-hidden className="absolute inset-0 bg-grid-pattern-subtle opacity-50" />
-        )}
-        <div className="absolute left-5 top-5">
-          <span
-            aria-hidden
-            className={cn(
-              "flex h-11 w-11 items-center justify-center rounded-medium shadow-elevation-sm",
-              "border border-white/60 backdrop-blur-sm",
-              accent.iconBg,
-              accent.iconText,
-            )}
-          >
-            <Icon className="h-5 w-5" />
-          </span>
-        </div>
-        <span
-          aria-hidden
-          className="absolute right-4 top-4 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border-subtle bg-background-elevated text-foreground-muted opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-        >
-          <ArrowUpRight className="h-3.5 w-3.5" />
-        </span>
-      </div>
+        <Icon className="h-5 w-5" />
+      </span>
+      <span
+        aria-hidden
+        className="absolute right-4 top-4 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/40 bg-black/30 text-white opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100"
+      >
+        <ArrowUpRight className="h-3.5 w-3.5" />
+      </span>
 
-      {/* Body */}
-      <div className="flex flex-1 flex-col gap-4 p-5">
+      {/* Conteúdo sobre o degradê */}
+      <div className="relative z-10 flex flex-col gap-3 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-5 pb-5 pt-16">
         <div>
-          <h3 className="text-[16px] font-semibold tracking-tight text-foreground-heading">
+          <h3 className="text-[16px] font-semibold tracking-tight text-white">
             {category.name}
           </h3>
-          <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-foreground-muted">
+          <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-white/75">
             {category.tagline}
           </p>
         </div>
 
-        <div className="flex items-center gap-3 text-[12px] text-foreground-subtitle">
+        <div className="flex items-center gap-3 text-[12px] text-white/80">
           <Stat label="trilhas" value={category.trackCount} />
           <Divider />
           <Stat label="aulas" value={category.lessonCount} />
           <Divider />
-          <Stat label="concluídas" value={category.completed} muted />
+          <Stat label="concluídas" value={category.completed} />
         </div>
 
-        <div className="mt-auto">
-          <div className="mb-1.5 flex items-baseline justify-between text-[11.5px]">
-            <span className="font-medium uppercase tracking-[0.12em] text-foreground-muted">
+        <div>
+          <div className="mb-1.5 flex items-baseline justify-between text-[11px]">
+            <span className="font-medium uppercase tracking-[0.12em] text-white/70">
               Seu progresso
             </span>
-            <span className="font-semibold tabular-nums text-foreground">
+            <span className="font-semibold tabular-nums text-white">
               {category.progressPct}%
             </span>
           </div>
-          <Progress value={category.progressPct} tone="primary" size="xs" />
-
-          {category.inProgress > 0 ? (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-foreground-muted">
-              <span
-                aria-hidden
-                className="inline-block h-1.5 w-1.5 rounded-full bg-brand-orange"
-              />
-              {category.inProgress}{" "}
-              {category.inProgress === 1 ? "trilha em andamento" : "trilhas em andamento"}
-            </p>
-          ) : (
-            <p className="mt-2 text-[11.5px] text-foreground-muted">
-              Comece sua primeira trilha
-            </p>
-          )}
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/25">
+            <div
+              className="h-full rounded-full bg-brand-primary"
+              style={{ width: `${category.progressPct}%` }}
+            />
+          </div>
         </div>
       </div>
     </Link>
   );
 }
 
-function Stat({ label, value, muted = false }: { label: string; value: number; muted?: boolean }) {
+function Stat({ label, value }: { label: string; value: number }) {
   return (
     <span className="inline-flex items-baseline gap-1">
-      <span
-        className={cn(
-          "text-[14px] font-semibold tabular-nums",
-          muted ? "text-foreground-subtitle" : "text-foreground-heading",
-        )}
-      >
+      <span className="text-[14px] font-semibold tabular-nums text-white">
         {value}
       </span>
-      <span className="text-foreground-muted">{label}</span>
+      <span className="text-white/65">{label}</span>
     </span>
   );
 }
 
 function Divider() {
-  return <span aria-hidden className="h-3 w-px bg-border-default" />;
+  return <span aria-hidden className="h-3 w-px bg-white/25" />;
 }

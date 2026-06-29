@@ -224,7 +224,9 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
         <MediaField
           label="Imagem de capa"
           kind="image"
-          hint="Capa exibida no card do curso."
+          aspect="portrait"
+          recommendedSize="1280 × 1808 px (retrato)"
+          hint="Capa retrato exibida no card e na página do curso."
           value={form.coverImageUrl}
           onChange={(value) => update("coverImageUrl", value)}
         />

@@ -200,7 +200,9 @@ export function CategoryFormDialog({ open, onClose, category }: CategoryFormDial
         <MediaField
           label="Imagem de capa"
           kind="image"
-          hint="Opcional. Recomendado 16:9, usada como capa da categoria."
+          aspect="portrait"
+          recommendedSize="1280 × 1808 px (retrato)"
+          hint="Capa retrato exibida no card da aplicação/módulo."
           value={form.coverImageUrl}
           onChange={(value) => update("coverImageUrl", value)}
         />

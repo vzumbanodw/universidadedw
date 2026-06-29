@@ -12,6 +12,10 @@ type MediaFieldProps = {
   kind?: "image" | "video";
   /** `avatar` = preview pequeno e redondo; `default` = preview em banner. */
   variant?: "default" | "avatar";
+  /** Proporção do preview de imagem. `portrait` = capa retrato (1280×1808). */
+  aspect?: "landscape" | "portrait";
+  /** Tamanho recomendado, exibido como dica (ex.: "1280 × 1808 px"). */
+  recommendedSize?: string;
 };
 
 /**
@@ -29,6 +33,8 @@ export function MediaField({
   onChange,
   kind = "image",
   variant = "default",
+  aspect = "landscape",
+  recommendedSize,
 }: MediaFieldProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -36,6 +42,7 @@ export function MediaField({
   const Icon = kind === "video" ? Video : ImageIcon;
   const hasValue = Boolean(value);
   const canUpload = kind === "image";
+  const isPortrait = aspect === "portrait" && kind === "image";
 
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -154,7 +161,12 @@ export function MediaField({
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-medium text-foreground-subtitle">{label}</span>
 
-      <div className="relative flex aspect-[16/7] w-full items-center justify-center overflow-hidden rounded-regular border border-border-default bg-background-subtle">
+      <div
+        className={cn(
+          "relative flex w-full items-center justify-center overflow-hidden rounded-regular border border-border-default bg-background-subtle",
+          isPortrait ? "aspect-[1280/1808] max-w-[200px]" : "aspect-[16/7]",
+        )}
+      >
         {hasValue && kind === "image" ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={value} alt={label} className="h-full w-full object-cover" />
@@ -180,6 +192,14 @@ export function MediaField({
       </div>
 
       {errorNode}
+      {recommendedSize ? (
+        <p className="text-[12px] text-foreground-muted">
+          Tamanho recomendado:{" "}
+          <strong className="font-medium text-foreground-subtitle">
+            {recommendedSize}
+          </strong>
+        </p>
+      ) : null}
       {hint ? <p className="text-[12px] text-foreground-muted">{hint}</p> : null}
       {fileInput}
     </div>

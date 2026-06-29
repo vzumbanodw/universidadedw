@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ArrowRight,
   Award,
   BookOpen,
   Clock,
@@ -9,7 +8,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { Progress } from "@/components/ui/Progress";
 import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/lib/formatters";
 import type { Course, CourseFormat } from "@/types/courses";
@@ -99,6 +97,10 @@ const FORMAT_ICON: Record<CourseFormat, LucideIcon> = {
   Certificação: Award,
 };
 
+/**
+ * Card de curso em formato pôster retrato (capa 1280×1808). A capa preenche o
+ * card; selos no topo e título/metadados sobre um degradê escuro na base.
+ */
 export function CourseCard({ course }: { course: Course }) {
   const accent = ACCENTS[course.accent];
   const FormatIcon = FORMAT_ICON[course.format];
@@ -108,68 +110,63 @@ export function CourseCard({ course }: { course: Course }) {
     <Link
       href={course.href}
       className={cn(
-        "group flex min-h-[320px] flex-col overflow-hidden rounded-medium border border-border-subtle bg-background-elevated",
+        "group relative flex aspect-[1280/1808] flex-col justify-end overflow-hidden rounded-medium border border-border-subtle bg-background-elevated",
         "shadow-elevation-sm ring-1 ring-transparent transition-[border-color,box-shadow,transform] duration-200",
         "hover:-translate-y-0.5 hover:border-border-default hover:shadow-elevation-md",
         accent.ring,
       )}
     >
-      <div className={cn("relative h-[118px] overflow-hidden bg-gradient-to-br", accent.cover)}>
-        {course.coverImageUrl ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={course.coverImageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div
-              aria-hidden
-              className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent"
-            />
-          </>
-        ) : (
-          <div aria-hidden className="absolute inset-0 bg-grid-pattern-subtle opacity-60" />
-        )}
-        <div className="absolute left-4 top-4 flex max-w-[calc(100%-2rem)] flex-wrap gap-1.5">
-          {course.featured ? (
-            <Badge variant="orange" size="sm">
-              <Sparkles className="h-2.5 w-2.5" aria-hidden />
-              Destaque
-            </Badge>
-          ) : null}
-          <Badge variant={LEVEL_VARIANT[course.level]} size="sm">
-            {course.level}
-          </Badge>
-          <Badge variant={STATUS_VARIANT[course.status]} size="sm" dot>
-            {STATUS_LABEL[course.status]}
-          </Badge>
-        </div>
-        <span
+      {/* Capa */}
+      {course.coverImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={course.coverImageUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div
           aria-hidden
-          className={cn(
-            "absolute bottom-4 left-4 flex h-10 w-10 items-center justify-center rounded-regular border border-white/50 shadow-elevation-sm backdrop-blur-sm",
-            accent.icon,
-          )}
+          className={cn("absolute inset-0 bg-gradient-to-br", accent.cover)}
         >
-          <FormatIcon className="h-[18px] w-[18px]" />
-        </span>
+          <div className="absolute inset-0 bg-grid-pattern-subtle opacity-60" />
+          <span
+            className={cn(
+              "absolute left-1/2 top-[36%] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-regular border border-white/50 shadow-elevation-sm backdrop-blur-sm",
+              accent.icon,
+            )}
+          >
+            <FormatIcon className="h-6 w-6" />
+          </span>
+        </div>
+      )}
+
+      {/* Selos no topo */}
+      <div className="absolute left-3 right-3 top-3 z-10 flex flex-wrap gap-1.5">
+        {course.featured ? (
+          <Badge variant="orange" size="sm">
+            <Sparkles className="h-2.5 w-2.5" aria-hidden />
+            Destaque
+          </Badge>
+        ) : null}
+        <Badge variant={LEVEL_VARIANT[course.level]} size="sm">
+          {course.level}
+        </Badge>
+        <Badge variant={STATUS_VARIANT[course.status]} size="sm" dot>
+          {STATUS_LABEL[course.status]}
+        </Badge>
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-5">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
-            {course.categoryName} · {course.format}
-          </p>
-          <h3 className="mt-1 line-clamp-2 text-[16px] font-semibold leading-snug tracking-tight text-foreground-heading">
-            {course.title}
-          </h3>
-          <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-foreground-muted">
-            {course.description}
-          </p>
-        </div>
+      {/* Degradê + conteúdo na base */}
+      <div className="relative z-10 flex flex-col gap-2 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-4 pb-4 pt-14">
+        <p className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-white/70">
+          {course.categoryName} · {course.format}
+        </p>
+        <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-white">
+          {course.title}
+        </h3>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-foreground-muted">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-white/75">
           <span className="inline-flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" aria-hidden />
             {formatMinutes(course.estimatedMinutes)}
@@ -186,23 +183,26 @@ export function CourseCard({ course }: { course: Course }) {
           ) : null}
         </div>
 
-        <div className="mt-auto">
-          {showProgress ? (
-            <Progress
-              value={course.progress}
-              tone="primary"
-              size="xs"
-              label={`${course.progress}% concluído`}
-            />
-          ) : (
-            <div className="inline-flex w-full items-center justify-between rounded-small bg-surface-muted/50 px-2.5 py-2 text-[12px] text-foreground-subtitle">
-              <span>
-                {course.status === "completed" ? "Revisar curso" : "Começar curso"}
-              </span>
-              <ArrowRight className="h-3.5 w-3.5 text-foreground-muted" aria-hidden />
+        {showProgress ? (
+          <div className="mt-1">
+            <div className="mb-1 flex items-center justify-between text-[11px] text-white/80">
+              <span>Em andamento</span>
+              <span className="font-semibold tabular-nums">{course.progress}%</span>
             </div>
-          )}
-        </div>
+            <div
+              role="progressbar"
+              aria-valuenow={course.progress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="h-1.5 w-full overflow-hidden rounded-full bg-white/25"
+            >
+              <div
+                className="h-full rounded-full bg-brand-primary"
+                style={{ width: `${course.progress}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
     </Link>
   );

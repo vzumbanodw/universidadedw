@@ -93,18 +93,22 @@ export default async function CourseDetailPage({ params }: PageProps) {
           </span>
         </nav>
 
-        {course.coverImageUrl ? (
-          <div className="relative h-40 w-full overflow-hidden rounded-medium border border-border-subtle sm:h-48">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={course.coverImageUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ) : null}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          {course.coverImageUrl ? (
+            <div className="mx-auto w-40 shrink-0 sm:w-48 lg:mx-0">
+              <div className="aspect-[1280/1808] overflow-hidden rounded-medium border border-border-subtle shadow-elevation-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={course.coverImageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            </div>
+          ) : null}
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
+          <div className="min-w-0 flex-1">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Badge variant="primary" size="sm">
@@ -148,6 +152,8 @@ export default async function CourseDetailPage({ params }: PageProps) {
               showValue
             />
           </aside>
+            </div>
+          </div>
         </div>
       </header>
 
