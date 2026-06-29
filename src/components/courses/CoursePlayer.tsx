@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/Progress";
 import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/lib/formatters";
 import { getVideoEmbed } from "@/lib/video";
+import { YouTubePlayer } from "@/components/courses/YouTubePlayer";
 import type { Course, CourseLesson } from "@/types/courses";
 
 type CoursePlayerProps = {
@@ -58,7 +59,13 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
           {embed ? (
             <>
               <div className="relative aspect-video w-full bg-black">
-                {embed.kind === "iframe" ? (
+                {embed.kind === "youtube" ? (
+                  <YouTubePlayer
+                    key={embed.id}
+                    id={embed.id}
+                    title={selectedLesson.title}
+                  />
+                ) : embed.kind === "iframe" ? (
                   <iframe
                     key={embed.src}
                     src={embed.src}

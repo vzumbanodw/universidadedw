@@ -5,7 +5,8 @@
  */
 
 export type VideoEmbed =
-  | { kind: "iframe"; src: string } // YouTube/Vimeo (embed)
+  | { kind: "youtube"; id: string } // YouTube — player controlado (só play/pause)
+  | { kind: "iframe"; src: string } // Vimeo / embed genérico
   | { kind: "file"; src: string }; // arquivo de vídeo direto
 
 export function getVideoEmbed(url?: string | null): VideoEmbed | null {
@@ -14,7 +15,7 @@ export function getVideoEmbed(url?: string | null): VideoEmbed | null {
 
   const youtubeId = parseYouTubeId(u);
   if (youtubeId) {
-    return { kind: "iframe", src: `https://www.youtube.com/embed/${youtubeId}` };
+    return { kind: "youtube", id: youtubeId };
   }
 
   const vimeoId = parseVimeoId(u);
