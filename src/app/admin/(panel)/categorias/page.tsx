@@ -56,8 +56,7 @@ export default function CategoriasPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdminCategory | null>(null);
 
-  const applications = store.categories.filter((c) => c.type === "aplicacao");
-  const modules = store.categories.filter((c) => c.type === "modulo");
+  const applications = store.categories;
 
   function openNew() {
     setEditing(null);
@@ -83,9 +82,9 @@ export default function CategoriasPage() {
   return (
     <div className="mx-auto flex max-w-[1180px] flex-col gap-8">
       <AdminPageHeader
-        breadcrumb={[{ label: "Backoffice", href: "/admin" }, { label: "Aplicações & Módulos" }]}
-        title="Aplicações & Módulos"
-        description="Categorias que organizam as trilhas e os cursos por produto. Definem ícone, cor e textos exibidos ao aluno."
+        breadcrumb={[{ label: "Backoffice", href: "/admin" }, { label: "Aplicações" }]}
+        title="Aplicações"
+        description="Aplicações que organizam as trilhas e os cursos por produto. Definem ícone, cor e textos exibidos ao aluno."
         actions={
           <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openNew}>
             Nova categoria
@@ -97,7 +96,7 @@ export default function CategoriasPage() {
         <EmptyState
           icon={Layers}
           title="Nenhuma categoria ainda"
-          description="Crie sua primeira aplicação ou módulo para começar a estruturar o conteúdo."
+          description="Crie sua primeira aplicação para começar a estruturar o conteúdo."
           action={
             <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openNew}>
               Nova categoria
@@ -105,24 +104,14 @@ export default function CategoriasPage() {
           }
         />
       ) : (
-        <>
-          <CategoryGroup
-            title="Aplicações"
-            description="Produtos da plataforma, como Analytics, CRM, Dilab, OptFacil e PDF."
-            categories={applications}
-            store={store}
-            onEdit={openEdit}
-            onDelete={handleDelete}
-          />
-          <CategoryGroup
-            title="Módulos"
-            description="Processos transversais, como Financeiro, Administrativo e Indústria."
-            categories={modules}
-            store={store}
-            onEdit={openEdit}
-            onDelete={handleDelete}
-          />
-        </>
+        <CategoryGroup
+          title="Aplicações"
+          description="Produtos da plataforma que organizam as trilhas e os cursos."
+          categories={applications}
+          store={store}
+          onEdit={openEdit}
+          onDelete={handleDelete}
+        />
       )}
 
       <CategoryFormDialog

@@ -41,7 +41,7 @@ function buildFeatures(
     {
       title: "Trilhas",
       description:
-        "Caminhos de aprendizado por aplicação e módulo, com progresso claro para cada área.",
+        "Caminhos de aprendizado por aplicação, com progresso claro para cada área.",
       href: "/dashboard/trilhas",
       icon: Compass,
       accent: "teal",

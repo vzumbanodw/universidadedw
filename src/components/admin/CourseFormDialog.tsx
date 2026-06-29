@@ -63,7 +63,7 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
 
   const categoryOptions = store.categories.map((c) => ({
     value: c.id,
-    label: `${c.type === "aplicacao" ? "Aplicação" : "Módulo"} · ${c.name}`,
+    label: c.name,
   }));
 
   useEffect(() => {
@@ -99,7 +99,7 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
       return;
     }
     if (!form.categoryId) {
-      setError("Selecione a aplicação ou módulo do curso.");
+      setError("Selecione a aplicação do curso.");
       return;
     }
 
@@ -147,7 +147,7 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
       onClose={onClose}
       size="lg"
       title={course ? "Editar curso" : "Novo curso"}
-      description="Cursos pertencem a uma aplicação ou módulo e herdam a cor da categoria, como no app do aluno."
+      description="Cursos pertencem a uma aplicação e herdam a cor dela, como no app do aluno."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -182,9 +182,9 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
         />
 
         <Select
-          label="Aplicação / Módulo"
+          label="Aplicação"
           required
-          placeholder={categoryOptions.length === 0 ? "Crie uma categoria primeiro" : undefined}
+          placeholder={categoryOptions.length === 0 ? "Crie uma aplicação primeiro" : undefined}
           value={form.categoryId}
           onChange={(e) => update("categoryId", e.target.value)}
           options={categoryOptions}

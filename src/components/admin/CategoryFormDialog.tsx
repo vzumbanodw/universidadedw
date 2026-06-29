@@ -10,7 +10,6 @@ import { MediaField } from "@/components/admin/MediaField";
 import { useAdminStore } from "@/lib/admin/store";
 import {
   ACCENT_OPTIONS,
-  CATEGORY_TYPE_OPTIONS,
   ICON_OPTIONS,
   createId,
   slugify,
@@ -80,7 +79,7 @@ export function CategoryFormDialog({ open, onClose, category }: CategoryFormDial
 
   function handleSave() {
     if (!form.name.trim()) {
-      setError("Informe o nome da aplicação ou módulo.");
+      setError("Informe o nome da aplicação.");
       return;
     }
     if (!form.tagline.trim()) {
@@ -130,15 +129,15 @@ export function CategoryFormDialog({ open, onClose, category }: CategoryFormDial
       open={open}
       onClose={onClose}
       size="lg"
-      title={category ? "Editar categoria" : "Nova aplicação ou módulo"}
-      description="Categorias estruturam trilhas e cursos por produto. Seguem as mesmas cores, ícones e textos do app do aluno."
+      title={category ? "Editar aplicação" : "Nova aplicação"}
+      description="Aplicações estruturam trilhas e cursos por produto. Seguem as mesmas cores, ícones e textos do app do aluno."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
           <Button onClick={handleSave}>
-            {category ? "Salvar alterações" : "Criar categoria"}
+            {category ? "Salvar alterações" : "Criar aplicação"}
           </Button>
         </>
       }
@@ -150,22 +149,13 @@ export function CategoryFormDialog({ open, onClose, category }: CategoryFormDial
           </p>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Nome"
-            required
-            placeholder="Ex.: Analytics"
-            value={form.name}
-            onChange={(e) => update("name", e.target.value)}
-          />
-          <Select
-            label="Tipo"
-            required
-            value={form.type}
-            onChange={(e) => update("type", e.target.value as TrackCategoryType)}
-            options={CATEGORY_TYPE_OPTIONS}
-          />
-        </div>
+        <Input
+          label="Nome da aplicação"
+          required
+          placeholder="Ex.: Analytics"
+          value={form.name}
+          onChange={(e) => update("name", e.target.value)}
+        />
 
         <Input
           label="Resumo (tagline)"

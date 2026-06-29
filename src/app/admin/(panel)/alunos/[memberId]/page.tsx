@@ -30,7 +30,6 @@ import {
 import { accentToBadge } from "@/lib/admin/badge";
 import { formatDate } from "@/lib/formatters";
 import {
-  ACCESS_LEVEL_LABEL,
   CERTIFICATE_STATUS_LABEL,
   MEMBER_STATUS_LABEL,
 } from "@/types/admin";
@@ -69,7 +68,6 @@ export default function AlunoDetailPage({
   }
 
   const company = store.companies.find((c) => c.id === member.companyId);
-  const role = store.roles.find((r) => r.id === member.roleId);
   const pointsPerCourse = store.settings.points.pointsPerCourseCompletion;
   const progress = deriveStudentProgress(member, store.courses, pointsPerCourse);
   const maturity = maturityForPoints(progress.totalPoints, store.maturityLevels);
@@ -117,11 +115,6 @@ export default function AlunoDetailPage({
               <Badge variant="neutral" size="sm">
                 {MEMBER_STATUS_LABEL[member.status]}
               </Badge>
-              {role ? (
-                <Badge variant="neutral" size="sm">
-                  {role.name} · {ACCESS_LEVEL_LABEL[role.level]}
-                </Badge>
-              ) : null}
               {maturity ? (
                 <Badge variant={accentToBadge(maturity.accent)} size="sm" dot>
                   {maturity.name}

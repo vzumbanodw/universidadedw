@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type {
-  AccessRole,
+  AccessRequest,
   AdminCategory,
   AdminCourse,
   AdminLesson,
@@ -43,8 +43,8 @@ const EMPTY_STATE: AdminState = {
   lessons: [],
   trails: [],
   companies: [],
-  roles: [],
   members: [],
+  accessRequests: [],
   maturityLevels: [],
   certificates: [],
   releaseNotes: [],
@@ -54,7 +54,7 @@ const EMPTY_STATE: AdminState = {
 type AdminStore = AdminState & {
   ready: boolean;
 
-  // Categorias (Aplicações / Módulos)
+  // Categorias (Aplicações)
   upsertCategory: (category: AdminCategory) => void;
   deleteCategory: (id: string) => void;
 
@@ -76,16 +76,15 @@ type AdminStore = AdminState & {
   upsertCompany: (company: Company) => void;
   deleteCompany: (id: string) => void;
 
-  // Perfis de acesso
-  upsertRole: (role: AccessRole) => void;
-  deleteRole: (id: string) => void;
-  rolesForCompany: (companyId: string) => AccessRole[];
-
-  // Membros
+  // Membros (funcionários)
   addMembers: (members: CompanyMember[]) => void;
   upsertMember: (member: CompanyMember) => void;
   deleteMember: (id: string) => void;
   membersForCompany: (companyId: string) => CompanyMember[];
+
+  // Solicitações de acesso (atualização local; persistência via endpoints)
+  upsertAccessRequest: (request: AccessRequest) => void;
+  removeAccessRequest: (id: string) => void;
 
   // Maturidade
   upsertMaturityLevel: (level: MaturityLevel) => void;
@@ -221,15 +220,9 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({
           ...prev,
           companies: prev.companies.filter((company) => company.id !== id),
-          roles: prev.roles.filter((role) => role.companyId !== id),
           members: prev.members.filter((member) => member.companyId !== id),
         }));
       },
-
-      upsertRole: (role) => upsert("roles", role),
-      deleteRole: (id) => remove("roles", id),
-      rolesForCompany: (companyId) =>
-        state.roles.filter((role) => role.companyId === companyId),
 
       addMembers: (members) =>
         setState((prev) => ({ ...prev, members: [...prev.members, ...members] })),
@@ -237,6 +230,9 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       deleteMember: (id) => remove("members", id),
       membersForCompany: (companyId) =>
         state.members.filter((member) => member.companyId === companyId),
+
+      upsertAccessRequest: (request) => upsert("accessRequests", request),
+      removeAccessRequest: (id) => remove("accessRequests", id),
 
       upsertMaturityLevel: (level) => upsert("maturityLevels", level),
       deleteMaturityLevel: (id) => remove("maturityLevels", id),

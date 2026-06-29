@@ -10,6 +10,7 @@ import {
   Building2,
   GraduationCap as GraduationCapIcon,
   Award,
+  Inbox,
   BarChart3,
   Settings,
   Megaphone,
@@ -39,7 +40,7 @@ const SECTIONS: NavSection[] = [
   {
     label: "Conteúdo",
     items: [
-      { label: "Aplicações & Módulos", href: "/admin/categorias", icon: Layers },
+      { label: "Aplicações", href: "/admin/categorias", icon: Layers },
       { label: "Cursos & Aulas", href: "/admin/cursos", icon: BookOpen },
       { label: "Trilhas", href: "/admin/trilhas", icon: Route },
       { label: "Novidades & Updates", href: "/admin/updates", icon: Megaphone },
@@ -48,7 +49,8 @@ const SECTIONS: NavSection[] = [
   {
     label: "Pessoas",
     items: [
-      { label: "Empresas & Acessos", href: "/admin/empresas", icon: Building2 },
+      { label: "Empresas", href: "/admin/empresas", icon: Building2 },
+      { label: "Solicitações", href: "/admin/solicitacoes", icon: Inbox },
       { label: "Alunos & Progresso", href: "/admin/alunos", icon: GraduationCapIcon },
       { label: "Certificados", href: "/admin/certificados", icon: Award },
     ],

@@ -25,19 +25,16 @@ export default function CursosPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdminCourse | null>(null);
   const [query, setQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "aplicacao" | "modulo">("all");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return store.courses
-      .filter((c) => (typeFilter === "all" ? true : c.categoryType === typeFilter))
-      .filter((c) =>
-        q
-          ? c.title.toLowerCase().includes(q) ||
-            c.categoryName.toLowerCase().includes(q)
-          : true,
-      );
-  }, [store.courses, query, typeFilter]);
+    return store.courses.filter((c) =>
+      q
+        ? c.title.toLowerCase().includes(q) ||
+          c.categoryName.toLowerCase().includes(q)
+        : true,
+    );
+  }, [store.courses, query]);
 
   function openNew() {
     setEditing(null);
@@ -77,43 +74,24 @@ export default function CursosPage() {
         }
       />
 
-      {/* Filtros */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex h-10 flex-1 items-center rounded-regular border border-border-subtle bg-background-elevated transition-colors focus-within:border-foreground-subtitle">
-          <Search aria-hidden className="ml-3 h-4 w-4 text-foreground-muted" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar cursos por título ou categoria..."
-            aria-label="Buscar cursos"
-            className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <FilterPill active={typeFilter === "all"} onClick={() => setTypeFilter("all")}>
-            Todos
-          </FilterPill>
-          <FilterPill
-            active={typeFilter === "aplicacao"}
-            onClick={() => setTypeFilter("aplicacao")}
-          >
-            Aplicações
-          </FilterPill>
-          <FilterPill
-            active={typeFilter === "modulo"}
-            onClick={() => setTypeFilter("modulo")}
-          >
-            Módulos
-          </FilterPill>
-        </div>
+      {/* Busca */}
+      <div className="relative flex h-10 items-center rounded-regular border border-border-subtle bg-background-elevated transition-colors focus-within:border-foreground-subtitle">
+        <Search aria-hidden className="ml-3 h-4 w-4 text-foreground-muted" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar cursos por título ou aplicação..."
+          aria-label="Buscar cursos"
+          className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
+        />
       </div>
 
       {store.categories.length === 0 ? (
         <EmptyState
           icon={BookOpen}
           title="Crie uma categoria primeiro"
-          description="Cursos precisam pertencer a uma aplicação ou módulo. Cadastre uma categoria antes."
+          description="Cursos precisam pertencer a uma aplicação. Cadastre uma aplicação antes."
           action={
             <Link href="/admin/categorias">
               <Button variant="outline">Ir para categorias</Button>
@@ -220,32 +198,6 @@ export default function CursosPage() {
         course={editing}
       />
     </div>
-  );
-}
-
-function FilterPill({
-  children,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "inline-flex h-10 shrink-0 items-center rounded-regular px-3.5 text-[13px] font-medium transition-colors",
-        active
-          ? "border border-foreground-heading bg-foreground-heading text-background-elevated"
-          : "border border-border-subtle bg-background-elevated text-foreground-subtitle hover:border-border-default hover:bg-background-subtle hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
   );
 }
 

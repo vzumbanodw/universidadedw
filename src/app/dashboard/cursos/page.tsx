@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Cursos · Universidade",
   description:
-    "Cursos práticos da Universidade Dataweb organizados por aplicação e módulo.",
+    "Cursos práticos da Universidade Dataweb organizados por aplicação.",
 };
 
 export const dynamic = "force-dynamic";
@@ -24,8 +24,6 @@ export const dynamic = "force-dynamic";
 export default async function CursosPage() {
   const content = await readContent();
   const published = content.courses.filter((c) => c.published);
-  const applicationCourses = published.filter((c) => c.categoryType === "aplicacao");
-  const moduleCourses = published.filter((c) => c.categoryType === "modulo");
 
   const summary = published.reduce(
     (acc, course) => {
@@ -50,17 +48,8 @@ export default async function CursosPage() {
       <CoursesSection
         eyebrow="Aplicações"
         title="Cursos por aplicação"
-        description="Aprofunde o uso das principais aplicações da plataforma com cursos objetivos e orientados à rotina."
-        courses={applicationCourses}
-      />
-
-      <Divider />
-
-      <CoursesSection
-        eyebrow="Módulos"
-        title="Cursos por módulo"
-        description="Aprenda processos transversais que conectam áreas, permissões, financeiro, campo e operação."
-        courses={moduleCourses}
+        description="Aprofunde o uso das aplicações da plataforma com cursos objetivos e orientados à rotina."
+        courses={published}
       />
     </div>
   );
@@ -94,7 +83,6 @@ function PageHeader({ summary }: { summary: Summary }) {
         <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-foreground-subtitle">
           Cursos rápidos e práticos conectados às mesmas{" "}
           <strong className="font-semibold text-foreground">aplicações</strong>{" "}
-          e <strong className="font-semibold text-foreground">módulos</strong>{" "}
           das suas trilhas. Use para reforçar uma habilidade específica ou
           acelerar uma entrega do time.
         </p>
@@ -184,7 +172,7 @@ function FilterBar() {
         <input
           type="search"
           aria-label="Buscar cursos"
-          placeholder="Buscar cursos, aplicações ou módulos..."
+          placeholder="Buscar cursos ou aplicações..."
           className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
         />
       </div>
@@ -289,10 +277,3 @@ function ShortcutCard({
   );
 }
 
-function Divider() {
-  return (
-    <div aria-hidden className="relative">
-      <div className="h-px w-full bg-border-subtle" />
-    </div>
-  );
-}

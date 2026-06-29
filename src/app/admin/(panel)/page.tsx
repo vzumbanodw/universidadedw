@@ -28,8 +28,6 @@ export default function AdminOverviewPage() {
   const store = useAdminStore();
 
   const metrics = useMemo(() => {
-    const applications = store.categories.filter((c) => c.type === "aplicacao").length;
-    const modules = store.categories.filter((c) => c.type === "modulo").length;
     const publishedCourses = store.courses.filter((c) => c.published).length;
     const draftCourses = store.courses.length - publishedCourses;
     const activeTrails = store.trails.filter((t) => t.published).length;
@@ -50,8 +48,6 @@ export default function AdminOverviewPage() {
         : 0;
 
     return {
-      applications,
-      modules,
       publishedCourses,
       draftCourses,
       activeTrails,
@@ -59,7 +55,7 @@ export default function AdminOverviewPage() {
       avgProgress,
       progresses,
     };
-  }, [store.categories, store.courses, store.trails, store.certificates, store.members, store.settings]);
+  }, [store.courses, store.trails, store.certificates, store.members, store.settings]);
 
   // Cursos com melhor/pior conclusão (a partir do progresso derivado dos alunos).
   const courseConclusion = useMemo(() => {
@@ -105,7 +101,7 @@ export default function AdminOverviewPage() {
     {
       title: "Cursos & Aulas",
       description:
-        "Publique cursos com capa, vídeo e aulas, vinculados a cada aplicação ou módulo.",
+        "Publique cursos com capa, vídeo e aulas, vinculados a cada aplicação.",
       href: "/admin/cursos",
       icon: BookOpen,
       accent: "orange",

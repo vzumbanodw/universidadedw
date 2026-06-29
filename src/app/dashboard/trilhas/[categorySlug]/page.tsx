@@ -51,7 +51,7 @@ export default async function TrackCategoryDetailPage({ params }: PageProps) {
     (course) => course.published && course.categoryId === category.id,
   );
 
-  const typeLabel = category.type === "aplicacao" ? "Aplicação" : "Módulo";
+  const typeLabel = "Aplicação";
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
@@ -113,14 +113,14 @@ export default async function TrackCategoryDetailPage({ params }: PageProps) {
         <CoursesSection
           eyebrow={typeLabel}
           title={`Cursos de ${category.name}`}
-          description="Cursos e módulos publicados nesta categoria."
+          description="Cursos publicados nesta aplicação."
           courses={courses}
         />
       ) : (
         <div className="rounded-medium border border-dashed border-border-default bg-background-elevated px-6 py-14 text-center">
           <p className="text-[14px] text-foreground-muted">
-            Nenhum curso publicado nesta categoria ainda. Adicione cursos a esta
-            aplicação/módulo no backoffice para que apareçam aqui.
+            Nenhum curso publicado nesta aplicação ainda. Adicione cursos a esta
+            aplicação no backoffice para que apareçam aqui.
           </p>
           <Link
             href="/dashboard/trilhas"

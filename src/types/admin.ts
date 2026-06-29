@@ -53,39 +53,8 @@ export type AdminLesson = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* Empresas, perfis de acesso e membros                                        */
+/* Empresas e membros (funcionários)                                           */
 /* -------------------------------------------------------------------------- */
-
-/**
- * Nível de acesso de um membro dentro da empresa.
- * - company_admin: gerencia a própria empresa e seus usuários
- * - manager: acompanha o progresso da equipe
- * - student: apenas consome o conteúdo liberado
- */
-export type AccessLevel = "company_admin" | "manager" | "student";
-
-export const ACCESS_LEVEL_LABEL: Record<AccessLevel, string> = {
-  company_admin: "Administrador da empresa",
-  manager: "Gestor de equipe",
-  student: "Aluno",
-};
-
-/**
- * Perfil de acesso ("tipo de funcionário"). Agrupa quais aplicações/módulos e
- * cursos um conjunto de funcionários pode consumir, evitando configurar a
- * liberação pessoa a pessoa.
- */
-export type AccessRole = {
-  id: string;
-  companyId: string;
-  name: string;
-  description: string;
-  level: AccessLevel;
-  /** Aplicações/Módulos liberados (ids de AdminCategory). */
-  categoryIds: string[];
-  /** Cursos avulsos liberados além das categorias (ids de AdminCourse). */
-  courseIds: string[];
-};
 
 export type MemberStatus = "active" | "invited" | "suspended";
 
@@ -100,8 +69,8 @@ export type CompanyMember = {
   companyId: string;
   name: string;
   email: string;
-  jobTitle: string;
-  roleId: string;
+  /** Cargo/função do funcionário (opcional). */
+  jobTitle?: string;
   status: MemberStatus;
   createdAt: string;
   /** Id do usuário no Supabase Auth, quando o acesso já foi criado. */
@@ -119,6 +88,35 @@ export type Company = {
   seats: number;
   logoUrl?: string;
   createdAt: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Solicitações de acesso (fluxo público do login)                             */
+/* -------------------------------------------------------------------------- */
+
+export type AccessRequestStatus = "pending" | "approved" | "rejected";
+
+export const ACCESS_REQUEST_STATUS_LABEL: Record<AccessRequestStatus, string> = {
+  pending: "Pendente",
+  approved: "Aprovada",
+  rejected: "Recusada",
+};
+
+/**
+ * Pedido de acesso enviado pela tela de login do Universidade. O operador
+ * aprova (vinculando a uma empresa cadastrada) ou recusa no backoffice.
+ */
+export type AccessRequest = {
+  id: string;
+  name: string;
+  email: string;
+  /** Empresa digitada pelo solicitante (texto livre). */
+  companyName?: string;
+  /** Empresa vinculada na aprovação (id de Company). */
+  companyId?: string;
+  status: AccessRequestStatus;
+  createdAt: string;
+  reviewedAt?: string;
 };
 
 /* -------------------------------------------------------------------------- */

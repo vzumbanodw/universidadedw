@@ -8,8 +8,11 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/types";
+import type { AccessRequest } from "@/types/admin";
 import {
+  insertAccessRequestToSupabase,
   readStateFromSupabase,
+  updateAccessRequestInSupabase,
   writeStateToSupabase,
   TablesMissing,
 } from "./store.supabase";
@@ -42,8 +45,8 @@ function normalize(state: Partial<AdminState>): AdminState {
     lessons: state.lessons ?? seed.lessons,
     trails: state.trails ?? seed.trails,
     companies: state.companies ?? seed.companies,
-    roles: state.roles ?? seed.roles,
     members: state.members ?? seed.members,
+    accessRequests: state.accessRequests ?? seed.accessRequests,
     maturityLevels: state.maturityLevels ?? seed.maturityLevels,
     certificates: state.certificates ?? seed.certificates,
     releaseNotes: state.releaseNotes ?? seed.releaseNotes,
@@ -183,4 +186,77 @@ async function writeToFile(next: AdminState): Promise<AdminState> {
 async function persistToFile(state: AdminState): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(FILE, JSON.stringify(state, null, 2), "utf8");
+}
+
+/* -------------------------------------------------------------------------- */
+/* Solicitações de acesso — escrita pontual (fora do "replace" completo)       */
+/* -------------------------------------------------------------------------- */
+
+function newRequestId(): string {
+  return `acr_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Cria uma solicitação de acesso (fluxo público do login). */
+export async function createAccessRequest(input: {
+  name: string;
+  email: string;
+  companyName?: string;
+}): Promise<AccessRequest> {
+  const req: AccessRequest = {
+    id: newRequestId(),
+    name: input.name.trim(),
+    email: input.email.trim().toLowerCase(),
+    companyName: input.companyName?.trim() || undefined,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured() && hasServiceRole()) {
+    try {
+      await insertAccessRequestToSupabase(req);
+      return req;
+    } catch (error) {
+      if (!(error instanceof TablesMissing)) throw error;
+      // Supabase ativo, mas a tabela ainda não existe: avisa em vez de perder
+      // o pedido (o replace do conteúdo não grava `access_requests`).
+      throw new Error(
+        "A tabela de solicitações ainda não existe no Supabase. Rode a migration 0003 e tente novamente.",
+      );
+    }
+  }
+
+  // Sem Supabase (dev local): persiste no documento inteiro (arquivo).
+  const content = await readContent();
+  await writeContent({
+    ...content,
+    accessRequests: [...content.accessRequests, req],
+  });
+  return req;
+}
+
+/** Aprova/recusa uma solicitação (operador). Retorna a solicitação atualizada. */
+export async function reviewAccessRequest(
+  id: string,
+  status: "approved" | "rejected",
+  companyId?: string,
+): Promise<AccessRequest | null> {
+  const reviewedAt = new Date().toISOString();
+
+  if (isSupabaseConfigured() && hasServiceRole()) {
+    try {
+      return await updateAccessRequestInSupabase(id, { status, companyId, reviewedAt });
+    } catch (error) {
+      if (!(error instanceof TablesMissing)) throw error;
+    }
+  }
+
+  const content = await readContent();
+  let updated: AccessRequest | null = null;
+  const next = content.accessRequests.map((r) => {
+    if (r.id !== id) return r;
+    updated = { ...r, status, companyId: companyId ?? r.companyId, reviewedAt };
+    return updated;
+  });
+  await writeContent({ ...content, accessRequests: next });
+  return updated;
 }

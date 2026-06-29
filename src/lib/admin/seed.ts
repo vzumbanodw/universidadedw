@@ -5,7 +5,7 @@ import {
 import { mockCourses, getCourseLessons } from "@/data/mock-courses";
 import { mockCertificates } from "@/data/mock-certificates";
 import type {
-  AccessRole,
+  AccessRequest,
   AdminCategory,
   AdminCourse,
   AdminLesson,
@@ -30,8 +30,8 @@ export type AdminState = {
   lessons: AdminLesson[];
   trails: LearningTrail[];
   companies: Company[];
-  roles: AccessRole[];
   members: CompanyMember[];
+  accessRequests: AccessRequest[];
   maturityLevels: MaturityLevel[];
   certificates: IssuedCertificate[];
   releaseNotes: ReleaseNote[];
@@ -194,36 +194,6 @@ const SEED_COMPANY: Company = {
   createdAt: "2026-01-15T12:00:00.000Z",
 };
 
-const SEED_ROLES: AccessRole[] = [
-  {
-    id: "role_gestao",
-    companyId: SEED_COMPANY.id,
-    name: "Gestão da loja",
-    description: "Gerentes que acompanham indicadores e a operação completa.",
-    level: "manager",
-    categoryIds: ["app_analytics", "app_crm", "mod_financeiro", "mod_administrativo"],
-    courseIds: [],
-  },
-  {
-    id: "role_atendimento",
-    companyId: SEED_COMPANY.id,
-    name: "Atendimento e vendas",
-    description: "Equipe de balcão focada em OptFacil e CRM.",
-    level: "student",
-    categoryIds: ["app_optfacil", "app_crm"],
-    courseIds: [],
-  },
-  {
-    id: "role_laboratorio",
-    companyId: SEED_COMPANY.id,
-    name: "Laboratório",
-    description: "Time de produção e pedidos laboratoriais.",
-    level: "student",
-    categoryIds: ["app_dilab"],
-    courseIds: [],
-  },
-];
-
 const SEED_MEMBERS: CompanyMember[] = [
   {
     id: "mb_001",
@@ -231,7 +201,6 @@ const SEED_MEMBERS: CompanyMember[] = [
     name: "Helena Prado",
     email: "helena.prado@boavista.com.br",
     jobTitle: "Gerente geral",
-    roleId: "role_gestao",
     status: "active",
     createdAt: "2026-01-15T12:00:00.000Z",
   },
@@ -241,7 +210,6 @@ const SEED_MEMBERS: CompanyMember[] = [
     name: "Rafael Lima",
     email: "rafael.lima@boavista.com.br",
     jobTitle: "Consultor de vendas",
-    roleId: "role_atendimento",
     status: "active",
     createdAt: "2026-01-16T12:00:00.000Z",
   },
@@ -251,7 +219,6 @@ const SEED_MEMBERS: CompanyMember[] = [
     name: "Bianca Souza",
     email: "bianca.souza@boavista.com.br",
     jobTitle: "Técnica de laboratório",
-    roleId: "role_laboratorio",
     status: "invited",
     createdAt: "2026-01-16T12:00:00.000Z",
   },
@@ -359,8 +326,8 @@ export function createSeedState(): AdminState {
     lessons: seedLessons(),
     trails: seedTrails(),
     companies: [SEED_COMPANY],
-    roles: SEED_ROLES,
     members: SEED_MEMBERS,
+    accessRequests: [],
     maturityLevels: DEFAULT_MATURITY_LEVELS,
     certificates: seedCertificates(),
     releaseNotes: SEED_RELEASE_NOTES,

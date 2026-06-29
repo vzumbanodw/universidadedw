@@ -1,5 +1,4 @@
 import type {
-  AccessLevel,
   CourseFormat,
   LearningLevel,
   ReleaseEntryType,
@@ -55,12 +54,6 @@ export const FORMAT_OPTIONS: { value: CourseFormat; label: string }[] = [
   { value: "Prático", label: "Prático" },
   { value: "Ao vivo", label: "Ao vivo" },
   { value: "Certificação", label: "Certificação" },
-];
-
-export const ACCESS_LEVEL_OPTIONS: { value: AccessLevel; label: string }[] = [
-  { value: "company_admin", label: "Administrador da empresa" },
-  { value: "manager", label: "Gestor de equipe" },
-  { value: "student", label: "Aluno" },
 ];
 
 export const RESOURCE_TYPE_OPTIONS: {

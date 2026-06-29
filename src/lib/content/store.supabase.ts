@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import type { AdminState } from "@/lib/admin/seed";
 import type {
-  AccessLevel,
-  AccessRole,
+  AccessRequest,
+  AccessRequestStatus,
   AdminCategory,
   AdminCourse,
   AdminLesson,
@@ -81,6 +81,16 @@ async function fetchTable(table: string, order: string[]): Promise<Row[]> {
   return (data as Row[]) ?? [];
 }
 
+/** Como `fetchTable`, mas tolera a tabela ainda não existir (retorna []). */
+async function fetchTableOptional(table: string, order: string[]): Promise<Row[]> {
+  try {
+    return await fetchTable(table, order);
+  } catch (error) {
+    if (error instanceof TablesMissing) return [];
+    throw error;
+  }
+}
+
 /**
  * Reconstrói o `AdminState` a partir das tabelas. Retorna `null` quando o banco
  * está vazio (sem a linha de configurações), sinalizando que falta o seed.
@@ -94,8 +104,8 @@ export async function readStateFromSupabase(): Promise<AdminState | null> {
     trails,
     trailCourses,
     companies,
-    roles,
     members,
+    accessRequests,
     certs,
     maturity,
     notes,
@@ -107,8 +117,9 @@ export async function readStateFromSupabase(): Promise<AdminState | null> {
     fetchTable("learning_trails", ["sort_order"]),
     fetchTable("trail_courses", ["trail_id", "sort_order"]),
     fetchTable("companies", ["sort_order"]),
-    fetchTable("access_roles", ["sort_order"]),
     fetchTable("members", ["sort_order"]),
+    // Tabela nova (migration 0003): tolera ausência até o operador rodar o SQL.
+    fetchTableOptional("access_requests", ["sort_order"]),
     fetchTable("certificates", ["sort_order"]),
     fetchTable("maturity_levels", ["level_order"]),
     fetchTable("release_notes", ["sort_order"]),
@@ -131,8 +142,8 @@ export async function readStateFromSupabase(): Promise<AdminState | null> {
     lessons: lessons.map(fromLessonRow),
     trails: trails.map((t) => fromTrailRow(t, courseIdsByTrail.get(t.id) ?? [])),
     companies: companies.map(fromCompanyRow),
-    roles: roles.map(fromRoleRow),
     members: members.map(fromMemberRow),
+    accessRequests: accessRequests.map(fromAccessRequestRow),
     maturityLevels: maturity.map(fromMaturityRow),
     certificates: certs.map(fromCertificateRow),
     releaseNotes: notes.map(fromReleaseNoteRow),
@@ -167,8 +178,10 @@ export async function writeStateToSupabase(state: AdminState): Promise<void> {
     replaceTable("learning_trails", state.trails.map(toTrailRow)),
     replaceTable("trail_courses", buildTrailCourses(state.trails)),
     replaceTable("companies", state.companies.map(toCompanyRow)),
-    replaceTable("access_roles", state.roles.map(toRoleRow)),
     replaceTable("members", state.members.map(toMemberRow)),
+    // NB: `access_requests` é gravada por funções dedicadas (insert/update
+    // pontuais), NÃO pelo replace — assim um save do operador nunca apaga uma
+    // solicitação recém-chegada pelo fluxo público.
     replaceTable("certificates", state.certificates.map(toCertificateRow)),
     replaceTable("maturity_levels", state.maturityLevels.map(toMaturityRow)),
     replaceTable("release_notes", state.releaseNotes.map(toReleaseNoteRow)),
@@ -395,39 +408,13 @@ function toCompanyRow(c: Company, i: number): Row {
   };
 }
 
-function fromRoleRow(r: Row): AccessRole {
-  return {
-    id: r.id,
-    companyId: str(r.company_id),
-    name: r.name,
-    description: str(r.description),
-    level: r.level as AccessLevel,
-    categoryIds: arr<string>(r.category_ids),
-    courseIds: arr<string>(r.course_ids),
-  };
-}
-
-function toRoleRow(role: AccessRole, i: number): Row {
-  return {
-    id: role.id,
-    company_id: role.companyId,
-    name: role.name,
-    description: role.description,
-    level: role.level,
-    category_ids: role.categoryIds,
-    course_ids: role.courseIds,
-    sort_order: i,
-  };
-}
-
 function fromMemberRow(r: Row): CompanyMember {
   return {
     id: r.id,
     companyId: str(r.company_id),
     name: r.name,
     email: r.email,
-    jobTitle: str(r.job_title),
-    roleId: str(r.role_id),
+    jobTitle: und(r.job_title),
     status: r.status as MemberStatus,
     createdAt: str(r.created_at),
     authUserId: und(r.auth_user_id),
@@ -440,13 +427,74 @@ function toMemberRow(m: CompanyMember, i: number): Row {
     company_id: m.companyId,
     name: m.name,
     email: m.email,
-    job_title: m.jobTitle,
-    role_id: m.roleId,
+    job_title: m.jobTitle ?? null,
     status: m.status,
     auth_user_id: m.authUserId ?? null,
     sort_order: i,
     created_at: m.createdAt,
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Mappers + escrita pontual: solicitações de acesso                           */
+/* -------------------------------------------------------------------------- */
+
+function fromAccessRequestRow(r: Row): AccessRequest {
+  return {
+    id: r.id,
+    name: str(r.name),
+    email: str(r.email),
+    companyName: und(r.company_name),
+    companyId: und(r.company_id),
+    status: (r.status as AccessRequestStatus) ?? "pending",
+    createdAt: str(r.created_at),
+    reviewedAt: und(r.reviewed_at),
+  };
+}
+
+function toAccessRequestRow(req: AccessRequest, i: number): Row {
+  return {
+    id: req.id,
+    name: req.name,
+    email: req.email,
+    company_name: req.companyName ?? null,
+    company_id: req.companyId ?? null,
+    status: req.status,
+    reviewed_at: req.reviewedAt ?? null,
+    sort_order: i,
+    created_at: req.createdAt,
+  };
+}
+
+/** Insere uma solicitação (fluxo público). Lança `TablesMissing` se a tabela não existe. */
+export async function insertAccessRequestToSupabase(req: AccessRequest): Promise<void> {
+  const { error } = await db().from("access_requests").insert(toAccessRequestRow(req, 0));
+  if (error) {
+    if (isMissingTable(error)) throw new TablesMissing();
+    throw new Error(`[content] erro gravando access_requests: ${error.message}`);
+  }
+}
+
+/** Atualiza status/empresa de uma solicitação. Retorna a linha atualizada. */
+export async function updateAccessRequestInSupabase(
+  id: string,
+  patch: { status: AccessRequestStatus; companyId?: string; reviewedAt: string },
+): Promise<AccessRequest | null> {
+  const { data, error } = await db()
+    .from("access_requests")
+    .update({
+      status: patch.status,
+      company_id: patch.companyId ?? null,
+      reviewed_at: patch.reviewedAt,
+    })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  if (error) {
+    if (isMissingTable(error)) throw new TablesMissing();
+    throw new Error(`[content] erro atualizando access_requests: ${error.message}`);
+  }
+  return data ? fromAccessRequestRow(data as Row) : null;
 }
 
 /* -------------------------------------------------------------------------- */

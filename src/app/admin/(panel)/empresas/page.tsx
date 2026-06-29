@@ -22,9 +22,9 @@ export default function EmpresasPage() {
   return (
     <div className="mx-auto flex max-w-[1180px] flex-col gap-6">
       <AdminPageHeader
-        breadcrumb={[{ label: "Backoffice", href: "/admin" }, { label: "Empresas & Acessos" }]}
-        title="Empresas & Acessos"
-        description="Cada empresa cliente tem seus próprios perfis de acesso e usuários. Abra uma empresa para gerenciar a equipe."
+        breadcrumb={[{ label: "Backoffice", href: "/admin" }, { label: "Empresas" }]}
+        title="Empresas"
+        description="Cadastre empresas clientes e seus funcionários. Abra uma empresa para gerenciar a equipe e os acessos."
         actions={
           <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setDialogOpen(true)}>
             Nova empresa
@@ -47,7 +47,7 @@ export default function EmpresasPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {store.companies.map((company) => {
             const members = store.membersForCompany(company.id);
-            const roles = store.rolesForCompany(company.id);
+            const activeCount = members.filter((m) => m.status === "active").length;
             const occupancy = company.seats
               ? Math.round((members.length / company.seats) * 100)
               : 0;
@@ -86,11 +86,13 @@ export default function EmpresasPage() {
 
                 <div className="flex items-center gap-2">
                   <Badge variant="neutral" size="sm" icon={<Users className="h-3 w-3" />}>
-                    {members.length} usuário{members.length === 1 ? "" : "s"}
+                    {members.length} funcionário{members.length === 1 ? "" : "s"}
                   </Badge>
-                  <Badge variant="primary" size="sm">
-                    {roles.length} perfil{roles.length === 1 ? "" : "s"}
-                  </Badge>
+                  {activeCount > 0 ? (
+                    <Badge variant="success" size="sm" dot>
+                      {activeCount} ativo{activeCount === 1 ? "" : "s"}
+                    </Badge>
+                  ) : null}
                 </div>
 
                 <div>

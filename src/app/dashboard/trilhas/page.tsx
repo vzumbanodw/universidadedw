@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Trilhas · Universidade",
   description:
-    "Trilhas de aprendizado organizadas por aplicação e módulo da plataforma Dataweb.",
+    "Trilhas de aprendizado organizadas por aplicação da plataforma Dataweb.",
 };
 
 export const dynamic = "force-dynamic";
@@ -24,8 +24,6 @@ export const dynamic = "force-dynamic";
 export default async function TrilhasPage() {
   const content = await readContent();
   const published = content.categories.filter((c) => c.published);
-  const applicationCategories = published.filter((c) => c.type === "aplicacao");
-  const moduleCategories = published.filter((c) => c.type === "modulo");
 
   const summary = published.reduce(
     (acc, c) => {
@@ -47,17 +45,8 @@ export default async function TrilhasPage() {
       <TrackCategoriesSection
         eyebrow="Aplicações"
         title="Trilhas por aplicação"
-        description="Domine cada produto da plataforma na ordem certa, do primeiro acesso até a operação avançada."
-        categories={applicationCategories}
-      />
-
-      <Divider />
-
-      <TrackCategoriesSection
-        eyebrow="Módulos"
-        title="Trilhas por módulo"
-        description="Conteúdos focados nos módulos transversais que conectam diferentes áreas do seu negócio."
-        categories={moduleCategories}
+        description="Domine cada aplicação da plataforma na ordem certa, do primeiro acesso até a operação avançada."
+        categories={published}
       />
     </div>
   );
@@ -87,9 +76,8 @@ function PageHeader({ summary }: { summary: Summary }) {
           Trilhas
         </h1>
         <p className="mt-2 max-w-[60ch] text-[14px] leading-relaxed text-foreground-subtitle">
-          Trilhas de aprendizado organizadas por <strong className="font-semibold text-foreground">aplicação</strong>{" "}
-          e <strong className="font-semibold text-foreground">módulo</strong> de uso. Escolha o caminho que faz sentido para
-          o seu papel hoje.
+          Trilhas de aprendizado organizadas por <strong className="font-semibold text-foreground">aplicação</strong> da
+          plataforma. Escolha o caminho que faz sentido para o seu papel hoje.
         </p>
       </div>
 
@@ -179,7 +167,7 @@ function FilterBar() {
         <input
           type="search"
           aria-label="Buscar trilhas"
-          placeholder="Buscar trilhas, aplicações ou módulos…"
+          placeholder="Buscar trilhas ou aplicações…"
           className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
         />
       </div>
@@ -219,15 +207,5 @@ function FilterPill({
     >
       {children}
     </button>
-  );
-}
-
-/* --------------------------------- Divider --------------------------------- */
-
-function Divider() {
-  return (
-    <div aria-hidden className="relative">
-      <div className="h-px w-full bg-border-subtle" />
-    </div>
   );
 }
