@@ -2,6 +2,7 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   FileSpreadsheet,
@@ -47,8 +48,10 @@ export default function CompanyDetailPage({
 }) {
   const { companyId } = use(params);
   const store = useAdminStore();
+  const router = useRouter();
 
   const [companyDialog, setCompanyDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [memberDialog, setMemberDialog] = useState(false);
   const [editingMember, setEditingMember] = useState<CompanyMember | null>(null);
   const [bulkDialog, setBulkDialog] = useState(false);
@@ -92,6 +95,30 @@ export default function CompanyDetailPage({
       }
     }
     store.deleteMember(member.id);
+  }
+
+  async function handleDeleteCompany() {
+    if (!company) return;
+    const count = members.length;
+    const ok = window.confirm(
+      count > 0
+        ? `Excluir "${company.name}" e seus ${count} funcionário(s)? Os acessos serão removidos e esta ação não pode ser desfeita.`
+        : `Excluir "${company.name}"? Esta ação não pode ser desfeita.`,
+    );
+    if (!ok) return;
+    setDeleting(true);
+    // Remove também as contas no Supabase Auth dos funcionários com acesso criado.
+    await Promise.all(
+      members
+        .filter((m) => m.authUserId)
+        .map((m) =>
+          fetch(`/api/admin/students?userId=${m.authUserId}`, {
+            method: "DELETE",
+          }).catch(() => {}),
+        ),
+    );
+    store.deleteCompany(company.id);
+    router.replace("/admin/empresas");
   }
 
   function openNewMember() {
@@ -240,6 +267,33 @@ export default function CompanyDetailPage({
             ))}
           </Panel>
         )}
+      </section>
+
+      {/* Zona de perigo */}
+      <section className="rounded-medium border border-border-subtle bg-background-elevated p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-semibold tracking-tight text-foreground-heading">
+              Excluir empresa
+            </h2>
+            <p className="mt-0.5 text-[13px] text-foreground-muted">
+              Remove a empresa
+              {members.length > 0
+                ? ` e seus ${members.length} funcionário(s) e acessos`
+                : ""}
+              . Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleDeleteCompany}
+            disabled={deleting}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-regular border border-border-error bg-background-elevated px-4 text-sm font-medium text-foreground-error transition-colors hover:bg-background-error disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+            {deleting ? "Excluindo…" : "Excluir empresa"}
+          </button>
+        </div>
       </section>
 
       <CompanyFormDialog
