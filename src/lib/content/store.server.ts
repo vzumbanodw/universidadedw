@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { createSeedState, type AdminState } from "@/lib/admin/seed";
+import { DEFAULT_SETTINGS, type AdminState } from "@/lib/admin/seed";
 import {
   createSupabaseReadClient,
   createSupabaseServiceClient,
@@ -37,19 +37,35 @@ const FILE = path.join(DATA_DIR, "content.json");
 
 let fileCache: AdminState | null = null;
 
-function normalize(state: Partial<AdminState>): AdminState {
-  const seed = createSeedState();
+/** Estado VAZIO — produção começa sem nada até o operador criar no backoffice. */
+function emptyContent(): AdminState {
   return {
-    categories: state.categories ?? seed.categories,
-    courses: state.courses ?? seed.courses,
-    lessons: state.lessons ?? seed.lessons,
-    companies: state.companies ?? seed.companies,
-    members: state.members ?? seed.members,
-    accessRequests: state.accessRequests ?? seed.accessRequests,
-    maturityLevels: state.maturityLevels ?? seed.maturityLevels,
-    certificates: state.certificates ?? seed.certificates,
-    releaseNotes: state.releaseNotes ?? seed.releaseNotes,
-    settings: state.settings ?? seed.settings,
+    categories: [],
+    courses: [],
+    lessons: [],
+    companies: [],
+    members: [],
+    accessRequests: [],
+    maturityLevels: [],
+    certificates: [],
+    releaseNotes: [],
+    settings: DEFAULT_SETTINGS,
+  };
+}
+
+/** Preenche coleções AUSENTES com vazio (NUNCA com dados de exemplo). */
+function normalize(state: Partial<AdminState>): AdminState {
+  return {
+    categories: state.categories ?? [],
+    courses: state.courses ?? [],
+    lessons: state.lessons ?? [],
+    companies: state.companies ?? [],
+    members: state.members ?? [],
+    accessRequests: state.accessRequests ?? [],
+    maturityLevels: state.maturityLevels ?? [],
+    certificates: state.certificates ?? [],
+    releaseNotes: state.releaseNotes ?? [],
+    settings: state.settings ?? DEFAULT_SETTINGS,
   };
 }
 
@@ -62,25 +78,15 @@ export async function readContent(): Promise<AdminState> {
 
   try {
     const state = await readStateFromSupabase();
-    if (state) return state;
-
-    // Tabelas existem mas estão vazias → migra o documento atual para elas.
-    const initial = await migrationSource();
-    if (hasServiceRole()) {
-      try {
-        await writeStateToSupabase(initial);
-      } catch (error) {
-        if (!(error instanceof TablesMissing)) throw error;
-      }
-    }
-    return initial;
+    // Tabelas vazias → estado VAZIO. NUNCA injeta nem escreve dados de exemplo.
+    return state ?? emptyContent();
   } catch (error) {
     if (error instanceof TablesMissing) {
       // Tabelas normalizadas ainda não criadas: usa o documento JSONB.
       return readFromContentDoc();
     }
     console.error("[content] falha lendo do Supabase:", (error as Error).message);
-    return createSeedState();
+    return emptyContent();
   }
 }
 
@@ -96,18 +102,6 @@ export async function writeContent(next: AdminState): Promise<AdminState> {
       return writeToContentDoc(next);
     }
     throw error;
-  }
-}
-
-/** De onde puxar o estado inicial ao seedar as tabelas normalizadas. */
-async function migrationSource(): Promise<AdminState> {
-  const doc = await readContentDocRaw();
-  if (doc) return doc;
-  try {
-    const raw = await fs.readFile(FILE, "utf8");
-    return normalize(JSON.parse(raw) as Partial<AdminState>);
-  } catch {
-    return createSeedState();
   }
 }
 
@@ -131,13 +125,10 @@ async function readContentDocRaw(): Promise<AdminState | null> {
   }
 }
 
-/** Leitura do documento JSONB com auto-seed (fallback pré-migração). */
+/** Leitura do documento JSONB (fallback pré-migração). Sem dados de exemplo. */
 async function readFromContentDoc(): Promise<AdminState> {
   const doc = await readContentDocRaw();
-  if (doc) return doc;
-  const seed = createSeedState();
-  if (hasServiceRole()) await persistToContentDoc(seed);
-  return seed;
+  return doc ?? emptyContent();
 }
 
 async function writeToContentDoc(next: AdminState): Promise<AdminState> {
@@ -170,8 +161,7 @@ async function readFromFile(): Promise<AdminState> {
     const raw = await fs.readFile(FILE, "utf8");
     fileCache = normalize(JSON.parse(raw) as Partial<AdminState>);
   } catch {
-    fileCache = createSeedState();
-    await persistToFile(fileCache);
+    fileCache = emptyContent();
   }
   return fileCache;
 }
