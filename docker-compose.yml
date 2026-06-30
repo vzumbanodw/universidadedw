@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  web:
+    user: root
+    container_name: ${SERVICE_FULLNAME}-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # NEXT_PUBLIC_* precisam estar presentes no build (embutidas no client).
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    image: cr.dw.net.br/dataweb/dataweb.academy:${SERVICE_IMAGEVERSION:-latest}
+    restart: always
+    networks:
+      - traefik
+    environment:
+      - NODE_ENV=production
+      - PORT=80
+      - TZ=America/Sao_Paulo
+    env_file:
+      - .env.production
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --quiet http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.${TRAEFIK_SERVICE_FULLNAME}-insecure.rule=${TRAEFIK_ALL_HOSTNAMES}"
+      - "traefik.http.routers.${TRAEFIK_SERVICE_FULLNAME}-insecure.entrypoints=web"
+
+      - "traefik.http.routers.${TRAEFIK_SERVICE_FULLNAME}-secure.rule=${TRAEFIK_ALL_HOSTNAMES}"
+      - "traefik.http.routers.${TRAEFIK_SERVICE_FULLNAME}-secure.entrypoints=web-secure"
+      - "traefik.http.routers.${TRAEFIK_SERVICE_FULLNAME}-secure.tls.certresolver=main"
+
+      - "traefik.http.services.${TRAEFIK_SERVICE_FULLNAME}.loadbalancer.server.port=80"
+
+networks:
+  traefik:
+    external: true
