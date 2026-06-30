@@ -4,7 +4,7 @@ import type { LearningPathStatus } from "@/types/learning";
 /**
  * Helpers PUROS de progresso do aluno, calculados a partir do conjunto de aulas
  * concluídas (ids). Usados tanto no servidor (páginas) quanto no cliente
- * (browsers de cursos/trilhas). Conclusão é medida pelos VÍDEOS: uma aula conta
+ * (browsers de cursos/aplicações). Conclusão é medida pelos VÍDEOS: uma aula conta
  * se está publicada e tem `videoUrl`.
  */
 
@@ -61,6 +61,7 @@ export type ApplicationProgress = {
   pct: number;
   status: LearningPathStatus;
   courseCount: number;
+  lessonCount: number;
   completedCourses: number;
   inProgressCourses: number;
 };
@@ -73,6 +74,11 @@ export function applicationProgress(
   completed: Set<string>,
 ): ApplicationProgress {
   const appCourses = courses.filter((c) => c.published && c.categoryId === categoryId);
+  const courseIds = new Set(appCourses.map((c) => c.id));
+  const lessonCount = lessons.filter(
+    (l) => l.published && courseIds.has(l.courseId),
+  ).length;
+
   let total = 0;
   let done = 0;
   let completedCourses = 0;
@@ -99,6 +105,7 @@ export function applicationProgress(
     pct,
     status,
     courseCount: appCourses.length,
+    lessonCount,
     completedCourses,
     inProgressCourses,
   };
@@ -114,6 +121,8 @@ export function categoryWithRealProgress(
   const p = applicationProgress(category.id, courses, lessons, completed);
   return {
     ...category,
+    trackCount: p.courseCount,
+    lessonCount: p.lessonCount,
     progressPct: p.pct,
     completed: p.completedCourses,
     inProgress: p.inProgressCourses,

@@ -102,7 +102,7 @@ export function CategoryFormDialog({ open, onClose, category }: CategoryFormDial
           inProgress: 0,
           completed: 0,
           progressPct: 0,
-          href: `/dashboard/trilhas?categoria=${slug}`,
+          href: `/dashboard/aplicacoes/${slug}`,
           description: form.description,
           published: form.published,
         };
@@ -117,7 +117,7 @@ export function CategoryFormDialog({ open, onClose, category }: CategoryFormDial
       description: form.description.trim(),
       coverImageUrl: form.coverImageUrl,
       published: form.published,
-      href: `/dashboard/trilhas?categoria=${slug}`,
+      href: `/dashboard/aplicacoes/${slug}`,
     };
 
     store.upsertCategory(next);
@@ -130,7 +130,7 @@ export function CategoryFormDialog({ open, onClose, category }: CategoryFormDial
       onClose={onClose}
       size="lg"
       title={category ? "Editar aplicação" : "Nova aplicação"}
-      description="Aplicações estruturam trilhas e cursos por produto. Seguem as mesmas cores, ícones e textos do app do aluno."
+      description="Aplicações estruturam os cursos e as aulas por produto. Seguem as mesmas cores, ícones e textos do app do aluno."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>

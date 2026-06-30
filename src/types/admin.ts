@@ -166,34 +166,6 @@ export type ReleaseNote = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* Trilhas de aprendizagem                                                     */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Trilha de aprendizagem: sequência ordenada de cursos com um objetivo de
- * formação. Reaproveita `LearningLevel` e os accents das categorias para manter
- * a identidade visual do app do aluno.
- */
-export type LearningTrail = {
-  id: string;
-  title: string;
-  slug: string;
-  description: string;
-  /** Público-alvo (ex.: "Equipe de atendimento", "Gestores de loja"). */
-  targetAudience: string;
-  level: LearningLevel;
-  accent: TrackCategoryAccent;
-  /** Cursos da trilha, na ordem em que devem ser percorridos. */
-  courseIds: string[];
-  /** Pontuação total concedida ao concluir a trilha inteira. */
-  points: number;
-  hasCertificate: boolean;
-  published: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-/* -------------------------------------------------------------------------- */
 /* Maturidade do cliente                                                       */
 /* -------------------------------------------------------------------------- */
 

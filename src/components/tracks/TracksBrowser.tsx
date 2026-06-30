@@ -10,9 +10,9 @@ import type { LearningPathStatus } from "@/types/learning";
 export type TrackCategoryWithStatus = TrackCategory & { status: LearningPathStatus };
 
 /**
- * Navegação de trilhas (aplicações) do aluno: busca + filtros Todas / Em
- * andamento / Concluídas, que filtram pelo status REAL de cada aplicação
- * (progresso agregado dos vídeos dos seus cursos).
+ * Navegação de aplicações do aluno: busca + filtros Todas / Em andamento /
+ * Concluídas, que filtram pelo status REAL de cada aplicação (progresso
+ * agregado dos vídeos dos seus cursos).
  */
 export function TracksBrowser({ categories }: { categories: TrackCategoryWithStatus[] }) {
   const [query, setQuery] = useState("");
@@ -38,8 +38,8 @@ export function TracksBrowser({ categories }: { categories: TrackCategoryWithSta
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar trilhas ou aplicações…"
-            aria-label="Buscar trilhas"
+            placeholder="Buscar aplicações…"
+            aria-label="Buscar aplicações"
             className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
           />
         </div>

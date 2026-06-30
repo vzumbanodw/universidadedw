@@ -32,7 +32,6 @@ export async function GET() {
       categories: content.categories.length,
       courses: content.courses.length,
       lessons: content.lessons.length,
-      trails: content.trails.length,
       companies: content.companies.length,
       members: content.members.length,
       certificates: content.certificates.length,

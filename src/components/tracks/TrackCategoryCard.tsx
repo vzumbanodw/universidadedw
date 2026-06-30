@@ -56,13 +56,13 @@ export function trackCategorySlug(category: { name: string }): string {
 }
 
 /**
- * Card de aplicação (1ª camada das Trilhas): compacto e elegante, sem capa.
- * A imagem de capa aparece no cabeçalho da aplicação ao entrar nela.
+ * Card de aplicação (1ª camada): compacto e elegante, sem capa. A imagem de
+ * capa aparece no cabeçalho da aplicação ao entrar nela.
  */
 export function TrackCategoryCard({ category }: { category: TrackCategory }) {
   const Icon = ICONS[category.iconKey];
   const accent = ACCENTS[category.accent];
-  const href = `/dashboard/trilhas/${trackCategorySlug(category)}`;
+  const href = `/dashboard/aplicacoes/${trackCategorySlug(category)}`;
 
   return (
     <Link
@@ -100,7 +100,7 @@ export function TrackCategoryCard({ category }: { category: TrackCategory }) {
       </div>
 
       <div className="flex items-center gap-3 text-[12px] text-foreground-subtitle">
-        <Stat label="trilhas" value={category.trackCount} />
+        <Stat label="cursos" value={category.trackCount} />
         <Divider />
         <Stat label="aulas" value={category.lessonCount} />
         <Divider />

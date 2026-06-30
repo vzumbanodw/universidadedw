@@ -13,7 +13,7 @@ export const mockApplicationCategories: TrackCategory[] = [
     inProgress: 2,
     completed: 3,
     progressPct: 48,
-    href: "/dashboard/trilhas?categoria=analytics",
+    href: "/dashboard/aplicacoes/analytics",
   },
   {
     id: "app_crm",
@@ -27,7 +27,7 @@ export const mockApplicationCategories: TrackCategory[] = [
     inProgress: 3,
     completed: 5,
     progressPct: 72,
-    href: "/dashboard/trilhas?categoria=crm",
+    href: "/dashboard/aplicacoes/crm",
   },
   {
     id: "app_dilab",
@@ -41,7 +41,7 @@ export const mockApplicationCategories: TrackCategory[] = [
     inProgress: 1,
     completed: 1,
     progressPct: 22,
-    href: "/dashboard/trilhas?categoria=dilab",
+    href: "/dashboard/aplicacoes/dilab",
   },
   {
     id: "app_optfacil",
@@ -55,7 +55,7 @@ export const mockApplicationCategories: TrackCategory[] = [
     inProgress: 0,
     completed: 2,
     progressPct: 35,
-    href: "/dashboard/trilhas?categoria=optfacil",
+    href: "/dashboard/aplicacoes/optfacil",
   },
   {
     id: "app_pdf",
@@ -69,7 +69,7 @@ export const mockApplicationCategories: TrackCategory[] = [
     inProgress: 1,
     completed: 0,
     progressPct: 12,
-    href: "/dashboard/trilhas?categoria=pdf",
+    href: "/dashboard/aplicacoes/pdf",
   },
 ];
 
@@ -86,7 +86,7 @@ export const mockModuleCategories: TrackCategory[] = [
     inProgress: 2,
     completed: 4,
     progressPct: 64,
-    href: "/dashboard/trilhas?categoria=financeiro",
+    href: "/dashboard/aplicacoes/financeiro",
   },
   {
     id: "mod_administrativo",
@@ -100,7 +100,7 @@ export const mockModuleCategories: TrackCategory[] = [
     inProgress: 1,
     completed: 3,
     progressPct: 58,
-    href: "/dashboard/trilhas?categoria=administrativo",
+    href: "/dashboard/aplicacoes/administrativo",
   },
   {
     id: "mod_consultor",
@@ -114,7 +114,7 @@ export const mockModuleCategories: TrackCategory[] = [
     inProgress: 0,
     completed: 1,
     progressPct: 18,
-    href: "/dashboard/trilhas?categoria=consultor-externo",
+    href: "/dashboard/aplicacoes/consultor-externo",
   },
   {
     id: "mod_multicrediario",
@@ -128,7 +128,7 @@ export const mockModuleCategories: TrackCategory[] = [
     inProgress: 2,
     completed: 2,
     progressPct: 41,
-    href: "/dashboard/trilhas?categoria=multicrediario",
+    href: "/dashboard/aplicacoes/multicrediario",
   },
   {
     id: "mod_industria",
@@ -142,6 +142,6 @@ export const mockModuleCategories: TrackCategory[] = [
     inProgress: 1,
     completed: 0,
     progressPct: 9,
-    href: "/dashboard/trilhas?categoria=industria",
+    href: "/dashboard/aplicacoes/industria",
   },
 ];

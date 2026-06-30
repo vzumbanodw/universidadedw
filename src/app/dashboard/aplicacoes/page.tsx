@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Boxes,
+  BookOpen,
   CheckCircle2,
-  Compass,
+  Layers,
   PlayCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -21,14 +21,14 @@ import {
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Trilhas · Universidade",
+  title: "Aplicações · Universidade",
   description:
-    "Trilhas de aprendizado organizadas por aplicação da plataforma Dataweb.",
+    "Aplicações da plataforma Dataweb — cada aplicação reúne seus cursos e aulas.",
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function TrilhasPage() {
+export default async function AplicacoesPage() {
   const content = await readContent();
   const student = await getCurrentStudent();
   const completions = await getStudentCompletions(student?.id);
@@ -52,8 +52,8 @@ export default async function TrilhasPage() {
   });
 
   const summary: Summary = {
-    tracks: published.reduce((acc, c) => acc + c.trackCount, 0),
-    lessons: published.reduce((acc, c) => acc + c.lessonCount, 0),
+    applications: categories.length,
+    courses: categories.reduce((acc, c) => acc + c.trackCount, 0),
     inProgress: categories.filter((c) => c.status === "in_progress").length,
     completed: categories.filter((c) => c.status === "completed").length,
   };
@@ -68,8 +68,8 @@ export default async function TrilhasPage() {
 }
 
 type Summary = {
-  tracks: number;
-  lessons: number;
+  applications: number;
+  courses: number;
   inProgress: number;
   completed: number;
 };
@@ -86,21 +86,21 @@ function PageHeader({ summary }: { summary: Summary }) {
             Dashboard
           </Link>
           <span aria-hidden>/</span>
-          <span className="text-foreground-subtitle">Trilhas</span>
+          <span className="text-foreground-subtitle">Aplicações</span>
         </nav>
         <h1 className="text-[26px] font-semibold tracking-tight text-foreground-heading sm:text-[30px]">
-          Trilhas
+          Aplicações
         </h1>
         <p className="mt-2 max-w-[60ch] text-[14px] leading-relaxed text-foreground-subtitle">
-          Trilhas de aprendizado organizadas por{" "}
-          <strong className="font-semibold text-foreground">aplicação</strong> da
-          plataforma. Escolha o caminho que faz sentido para o seu papel hoje.
+          Cada <strong className="font-semibold text-foreground">aplicação</strong>{" "}
+          reúne seus <strong className="font-semibold text-foreground">cursos</strong>,
+          e cada curso traz suas aulas. Escolha por onde começar.
         </p>
       </div>
 
       <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:w-auto lg:shrink-0">
-        <SummaryTile icon={Compass} label="Trilhas" value={summary.tracks} />
-        <SummaryTile icon={Boxes} label="Aulas" value={summary.lessons} muted />
+        <SummaryTile icon={Layers} label="Aplicações" value={summary.applications} />
+        <SummaryTile icon={BookOpen} label="Cursos" value={summary.courses} muted />
         <SummaryTile
           icon={PlayCircle}
           label="Em andamento"

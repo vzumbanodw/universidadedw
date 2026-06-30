@@ -40,7 +40,7 @@ export function AppTopbar({ onOpenMobileNav }: AppTopbarProps) {
             {greeting}, {user.firstName}
           </p>
           <h1 className="truncate text-[15px] font-semibold tracking-tight text-foreground-heading">
-            Trilhas, cursos e certificados em um só lugar
+            Aplicações, cursos e certificados em um só lugar
           </h1>
         </div>
 
@@ -71,7 +71,7 @@ function SearchInput() {
       />
       <input
         type="search"
-        placeholder="Buscar trilhas, cursos ou certificados..."
+        placeholder="Buscar aplicações, cursos ou certificados..."
         aria-label="Buscar"
         className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
       />

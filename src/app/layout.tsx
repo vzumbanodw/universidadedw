@@ -17,7 +17,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Universidade Dataweb",
   description:
-    "Trilhas, cursos e certificados para capacitação na plataforma Dataweb.",
+    "Aplicações, cursos e certificados para capacitação na plataforma Dataweb.",
   icons: { icon: "/favicon.png" },
 };
 

@@ -12,7 +12,6 @@ import type {
   Company,
   CompanyMember,
   IssuedCertificate,
-  LearningTrail,
   MaturityLevel,
   ReleaseNote,
 } from "@/types/admin";
@@ -27,7 +26,6 @@ export type AdminState = {
   categories: AdminCategory[];
   courses: AdminCourse[];
   lessons: AdminLesson[];
-  trails: LearningTrail[];
   companies: Company[];
   members: CompanyMember[];
   accessRequests: AccessRequest[];
@@ -132,54 +130,6 @@ function seedLessons(): AdminLesson[] {
       published: true,
     })),
   );
-}
-
-function seedTrails(): LearningTrail[] {
-  const courses = mockCourses;
-  const byType = (type: "aplicacao" | "modulo") =>
-    courses.filter((c) => c.categoryType === type).map((c) => c.id);
-
-  const appCourses = byType("aplicacao").slice(0, 3);
-  const moduleCourses = byType("modulo").slice(0, 3);
-
-  const trails: LearningTrail[] = [];
-  if (appCourses.length > 0) {
-    trails.push({
-      id: "trail_atendimento",
-      title: "Trilha de Atendimento e Vendas",
-      slug: "atendimento-e-vendas",
-      description:
-        "Formação completa para a equipe de balcão dominar o atendimento, o CRM e o fechamento de vendas.",
-      targetAudience: "Equipe de atendimento e vendas",
-      level: "Iniciante",
-      accent: "teal",
-      courseIds: appCourses,
-      points: 300,
-      hasCertificate: true,
-      published: true,
-      createdAt: "2026-02-01T12:00:00.000Z",
-      updatedAt: "2026-02-01T12:00:00.000Z",
-    });
-  }
-  if (moduleCourses.length > 0) {
-    trails.push({
-      id: "trail_gestao",
-      title: "Trilha de Gestão da Loja",
-      slug: "gestao-da-loja",
-      description:
-        "Capacita gestores a acompanhar indicadores, finanças e a operação administrativa completa.",
-      targetAudience: "Gestores e administradores",
-      level: "Intermediário",
-      accent: "orange",
-      courseIds: moduleCourses,
-      points: 450,
-      hasCertificate: true,
-      published: false,
-      createdAt: "2026-02-10T12:00:00.000Z",
-      updatedAt: "2026-02-10T12:00:00.000Z",
-    });
-  }
-  return trails;
 }
 
 const SEED_COMPANY: Company = {
@@ -294,7 +244,6 @@ export function createSeedState(): AdminState {
     categories: seedCategories(),
     courses: seedCourses(),
     lessons: seedLessons(),
-    trails: seedTrails(),
     companies: [SEED_COMPANY],
     members: SEED_MEMBERS,
     accessRequests: [],

@@ -22,7 +22,7 @@ import type { AdminCategory, AdminCourse } from "@/types/admin";
 
 export const metadata: Metadata = {
   title: "Universidade Dataweb",
-  description: "Acesse trilhas, cursos e certificados da Universidade Dataweb.",
+  description: "Acesse aplicações, cursos e certificados da Universidade Dataweb.",
 };
 
 // Conteúdo é gerenciado pelo backoffice e lido em tempo real do servidor.
@@ -47,17 +47,14 @@ function buildFeatures(
 ): Feature[] {
   return [
     {
-      title: "Trilhas",
+      title: "Aplicações",
       description:
-        "Caminhos de aprendizado por aplicação, com progresso claro para cada área.",
-      href: "/dashboard/trilhas",
+        "Cada aplicação reúne seus cursos e aulas, com progresso claro para cada área.",
+      href: "/dashboard/aplicacoes",
       icon: Compass,
       accent: "teal",
       stats: [
-        {
-          label: "trilhas",
-          value: categories.reduce((sum, item) => sum + item.trackCount, 0),
-        },
+        { label: "aplicações", value: categories.length },
         {
           label: "em andamento",
           value: categories.reduce((sum, item) => sum + item.inProgress, 0),
@@ -133,7 +130,7 @@ export default async function DashboardPage() {
         </span>
         <div className="max-w-[760px]">
           <h1 className="text-[30px] font-semibold leading-tight tracking-tight text-foreground-heading sm:text-[38px]">
-            Aprendizado focado em trilhas, cursos e certificados.
+            Aprendizado focado em aplicações, cursos e certificados.
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-foreground-subtitle">
             Uma experiência direta para escolher o caminho, estudar o conteúdo e
@@ -146,7 +143,7 @@ export default async function DashboardPage() {
         aria-label="Resumo da Universidade"
         className="grid grid-cols-1 gap-3 sm:grid-cols-3"
       >
-        <Metric icon={Layers} label="Trilhas em andamento" value={activeTracks} />
+        <Metric icon={Layers} label="Cursos em andamento" value={activeTracks} />
         <Metric icon={CheckCircle2} label="Cursos concluídos" value={completedCourses} />
         <Metric icon={Award} label="Certificados emitidos" value={issuedCertificates} />
       </section>

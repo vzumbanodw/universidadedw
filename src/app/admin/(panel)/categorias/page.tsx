@@ -84,7 +84,7 @@ export default function CategoriasPage() {
       <AdminPageHeader
         breadcrumb={[{ label: "Backoffice", href: "/admin" }, { label: "Aplicações" }]}
         title="Aplicações"
-        description="Aplicações que organizam as trilhas e os cursos por produto. Definem ícone, cor e textos exibidos ao aluno."
+        description="Aplicações que organizam os cursos e as aulas por produto. Definem ícone, cor e textos exibidos ao aluno."
         actions={
           <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openNew}>
             Nova categoria
@@ -106,7 +106,7 @@ export default function CategoriasPage() {
       ) : (
         <CategoryGroup
           title="Aplicações"
-          description="Produtos da plataforma que organizam as trilhas e os cursos."
+          description="Produtos da plataforma que organizam os cursos e as aulas."
           categories={applications}
           store={store}
           onEdit={openEdit}

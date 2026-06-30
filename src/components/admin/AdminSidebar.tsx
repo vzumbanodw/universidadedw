@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Layers,
   BookOpen,
-  Route,
   Building2,
   GraduationCap as GraduationCapIcon,
   Award,
@@ -42,7 +41,6 @@ const SECTIONS: NavSection[] = [
     items: [
       { label: "Aplicações", href: "/admin/categorias", icon: Layers },
       { label: "Cursos & Aulas", href: "/admin/cursos", icon: BookOpen },
-      { label: "Trilhas", href: "/admin/trilhas", icon: Route },
       { label: "Novidades & Updates", href: "/admin/updates", icon: Megaphone },
     ],
   },

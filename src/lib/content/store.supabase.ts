@@ -15,7 +15,6 @@ import type {
   IssuedCertificate,
   IssuedCertificateStatus,
   LearningLevel,
-  LearningTrail,
   MaturityLevel,
   MemberStatus,
   ReleaseEntry,
@@ -101,8 +100,6 @@ export async function readStateFromSupabase(): Promise<AdminState | null> {
     cats,
     courses,
     lessons,
-    trails,
-    trailCourses,
     companies,
     members,
     accessRequests,
@@ -114,8 +111,6 @@ export async function readStateFromSupabase(): Promise<AdminState | null> {
     fetchTable("course_categories", ["sort_order"]),
     fetchTable("courses", ["sort_order"]),
     fetchTable("lessons", ["course_id", "lesson_order"]),
-    fetchTable("learning_trails", ["sort_order"]),
-    fetchTable("trail_courses", ["trail_id", "sort_order"]),
     fetchTable("companies", ["sort_order"]),
     fetchTable("members", ["sort_order"]),
     // Tabela nova (migration 0003): tolera ausência até o operador rodar o SQL.
@@ -129,18 +124,10 @@ export async function readStateFromSupabase(): Promise<AdminState | null> {
   const settingsRow = settingsRows[0];
   if (!settingsRow) return null; // banco ainda não seedado
 
-  const courseIdsByTrail = new Map<string, string[]>();
-  for (const tc of trailCourses) {
-    const list = courseIdsByTrail.get(tc.trail_id) ?? [];
-    list.push(tc.course_id);
-    courseIdsByTrail.set(tc.trail_id, list);
-  }
-
   return {
     categories: cats.map(fromCategoryRow),
     courses: courses.map(fromCourseRow),
     lessons: lessons.map(fromLessonRow),
-    trails: trails.map((t) => fromTrailRow(t, courseIdsByTrail.get(t.id) ?? [])),
     companies: companies.map(fromCompanyRow),
     members: members.map(fromMemberRow),
     accessRequests: accessRequests.map(fromAccessRequestRow),
@@ -175,8 +162,6 @@ export async function writeStateToSupabase(state: AdminState): Promise<void> {
     replaceTable("course_categories", state.categories.map(toCategoryRow)),
     replaceTable("courses", state.courses.map(toCourseRow)),
     replaceTable("lessons", state.lessons.map(toLessonRow)),
-    replaceTable("learning_trails", state.trails.map(toTrailRow)),
-    replaceTable("trail_courses", buildTrailCourses(state.trails)),
     replaceTable("companies", state.companies.map(toCompanyRow)),
     replaceTable("members", state.members.map(toMemberRow)),
     // NB: `access_requests` é gravada por funções dedicadas (insert/update
@@ -323,56 +308,6 @@ function toLessonRow(l: AdminLesson): Row {
     resources: l.resources,
     published: l.published,
   };
-}
-
-/* -------------------------------------------------------------------------- */
-/* Mappers: trilhas                                                            */
-/* -------------------------------------------------------------------------- */
-
-function fromTrailRow(r: Row, courseIds: string[]): LearningTrail {
-  return {
-    id: r.id,
-    title: r.title,
-    slug: str(r.slug),
-    description: str(r.description),
-    targetAudience: str(r.target_audience),
-    level: r.level as LearningLevel,
-    accent: r.accent as TrackCategoryAccent,
-    courseIds,
-    points: r.points ?? 0,
-    hasCertificate: Boolean(r.has_certificate),
-    published: Boolean(r.published),
-    createdAt: str(r.created_at),
-    updatedAt: str(r.updated_at),
-  };
-}
-
-function toTrailRow(t: LearningTrail, i: number): Row {
-  return {
-    id: t.id,
-    title: t.title,
-    slug: t.slug,
-    description: t.description,
-    target_audience: t.targetAudience,
-    level: t.level,
-    accent: t.accent,
-    points: t.points,
-    has_certificate: t.hasCertificate,
-    published: t.published,
-    sort_order: i,
-    created_at: t.createdAt,
-    updated_at: t.updatedAt,
-  };
-}
-
-function buildTrailCourses(trails: LearningTrail[]): Row[] {
-  return trails.flatMap((t) =>
-    t.courseIds.map((courseId, index) => ({
-      trail_id: t.id,
-      course_id: courseId,
-      sort_order: index,
-    })),
-  );
 }
 
 /* -------------------------------------------------------------------------- */

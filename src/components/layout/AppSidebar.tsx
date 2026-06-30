@@ -23,7 +23,7 @@ type NavItem = {
 };
 
 const PRIMARY_NAV: NavItem[] = [
-  { label: "Trilhas", href: "/dashboard/trilhas", icon: Compass },
+  { label: "Aplicações", href: "/dashboard/aplicacoes", icon: Compass },
   { label: "Cursos", href: "/dashboard/cursos", icon: BookOpen },
   { label: "Certificados", href: "/dashboard/certificados", icon: ShieldCheck },
 ];

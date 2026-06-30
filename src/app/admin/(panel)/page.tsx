@@ -6,7 +6,6 @@ import {
   Layers,
   BookOpen,
   PlayCircle,
-  Route,
   Building2,
   GraduationCap,
   Award,
@@ -30,7 +29,7 @@ export default function AdminOverviewPage() {
   const metrics = useMemo(() => {
     const publishedCourses = store.courses.filter((c) => c.published).length;
     const draftCourses = store.courses.length - publishedCourses;
-    const activeTrails = store.trails.filter((t) => t.published).length;
+    const applications = store.categories.length;
     const issuedCertificates = store.certificates.filter(
       (c) => c.status === "issued",
     ).length;
@@ -50,12 +49,12 @@ export default function AdminOverviewPage() {
     return {
       publishedCourses,
       draftCourses,
-      activeTrails,
+      applications,
       issuedCertificates,
       avgProgress,
       progresses,
     };
-  }, [store.courses, store.trails, store.certificates, store.members, store.settings]);
+  }, [store.courses, store.categories, store.certificates, store.members, store.settings]);
 
   // Cursos com melhor/pior conclusão (a partir do progresso derivado dos alunos).
   const courseConclusion = useMemo(() => {
@@ -107,11 +106,11 @@ export default function AdminOverviewPage() {
       accent: "orange",
     },
     {
-      title: "Trilhas",
+      title: "Aplicações",
       description:
-        "Monte trilhas de aprendizagem ordenando cursos por público-alvo e objetivo.",
-      href: "/admin/trilhas",
-      icon: Route,
+        "Organize os cursos por aplicação. Cada aplicação reúne seus cursos e aulas.",
+      href: "/admin/categorias",
+      icon: Layers,
       accent: "teal",
     },
     {
@@ -157,7 +156,7 @@ export default function AdminOverviewPage() {
         <StatTile icon={BookOpen} label="Cursos publicados" value={metrics.publishedCourses} />
         <StatTile icon={Layers} label="Cursos em rascunho" value={metrics.draftCourses} />
         <StatTile icon={PlayCircle} label="Aulas" value={store.lessons.length} />
-        <StatTile icon={Route} label="Trilhas ativas" value={metrics.activeTrails} />
+        <StatTile icon={Layers} label="Aplicações" value={metrics.applications} />
         <StatTile icon={Building2} label="Empresas" value={store.companies.length} />
         <StatTile icon={GraduationCap} label="Alunos" value={store.members.length} />
         <StatTile icon={Award} label="Certificados emitidos" value={metrics.issuedCertificates} />

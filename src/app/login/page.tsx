@@ -9,7 +9,7 @@ import { getCurrentStudent } from "@/lib/auth/student";
 export const metadata: Metadata = {
   title: "Entrar na Universidade",
   description:
-    "Acesse trilhas, cursos e certificados da Universidade Dataweb.",
+    "Acesse aplicações, cursos e certificados da Universidade Dataweb.",
 };
 
 export const dynamic = "force-dynamic";
@@ -54,7 +54,7 @@ export default async function LoginPage() {
                 Entrar na Universidade
               </h2>
               <p className="text-[15px] leading-relaxed text-foreground-subtitle">
-                Acesse trilhas, cursos e certificados.
+                Acesse aplicações, cursos e certificados.
               </p>
             </div>
 

@@ -131,7 +131,7 @@ export function CoursesBrowser({
                     type="button"
                     onClick={() => {
                       setAppOpen(false);
-                      router.push(`/dashboard/trilhas/${app.slug}`);
+                      router.push(`/dashboard/aplicacoes/${app.slug}`);
                     }}
                     className="flex w-full items-center gap-2 rounded-regular px-3 py-2 text-left text-[13.5px] text-foreground-subtitle transition-colors hover:bg-background-subtle hover:text-foreground"
                   >

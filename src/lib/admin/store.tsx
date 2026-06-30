@@ -19,7 +19,6 @@ import type {
   Company,
   CompanyMember,
   IssuedCertificate,
-  LearningTrail,
   MaturityLevel,
   ReleaseNote,
 } from "@/types/admin";
@@ -41,7 +40,6 @@ const EMPTY_STATE: AdminState = {
   categories: [],
   courses: [],
   lessons: [],
-  trails: [],
   companies: [],
   members: [],
   accessRequests: [],
@@ -66,11 +64,6 @@ type AdminStore = AdminState & {
   // Aulas
   upsertLesson: (lesson: AdminLesson) => void;
   deleteLesson: (id: string) => void;
-
-  // Trilhas
-  upsertTrail: (trail: LearningTrail) => void;
-  deleteTrail: (id: string) => void;
-  coursesForTrail: (trailId: string) => AdminCourse[];
 
   // Empresas
   upsertCompany: (company: Company) => void;
@@ -204,16 +197,6 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
 
       upsertLesson: (lesson) => upsert("lessons", lesson),
       deleteLesson: (id) => remove("lessons", id),
-
-      upsertTrail: (trail) => upsert("trails", trail),
-      deleteTrail: (id) => remove("trails", id),
-      coursesForTrail: (trailId) => {
-        const trail = state.trails.find((t) => t.id === trailId);
-        if (!trail) return [];
-        return trail.courseIds
-          .map((id) => state.courses.find((c) => c.id === id))
-          .filter((c): c is AdminCourse => Boolean(c));
-      },
 
       upsertCompany: (company) => upsert("companies", company),
       deleteCompany: (id) => {

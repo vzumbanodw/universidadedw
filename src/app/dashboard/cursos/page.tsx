@@ -98,10 +98,10 @@ function PageHeader({ summary }: { summary: Summary }) {
           Cursos
         </h1>
         <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-foreground-subtitle">
-          Cursos rápidos e práticos conectados às mesmas{" "}
+          Cursos rápidos e práticos conectados às{" "}
           <strong className="font-semibold text-foreground">aplicações</strong>{" "}
-          das suas trilhas. Use para reforçar uma habilidade específica ou
-          acelerar uma entrega do time.
+          da plataforma. Use para reforçar uma habilidade específica ou acelerar
+          uma entrega do time.
         </p>
       </div>
 

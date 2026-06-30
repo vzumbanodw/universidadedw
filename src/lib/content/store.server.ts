@@ -43,7 +43,6 @@ function normalize(state: Partial<AdminState>): AdminState {
     categories: state.categories ?? seed.categories,
     courses: state.courses ?? seed.courses,
     lessons: state.lessons ?? seed.lessons,
-    trails: state.trails ?? seed.trails,
     companies: state.companies ?? seed.companies,
     members: state.members ?? seed.members,
     accessRequests: state.accessRequests ?? seed.accessRequests,

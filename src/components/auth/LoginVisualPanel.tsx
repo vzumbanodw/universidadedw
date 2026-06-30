@@ -82,7 +82,7 @@ export function LoginVisualPanel() {
       <footer className="relative z-10 px-10 pb-10">
         <div className="max-w-[520px]">
           <h1 className="text-balance text-[28px] font-semibold leading-[1.15] tracking-tight xl:text-[32px]">
-            Trilhas, cursos e certificados.
+            Aplicações, cursos e certificados.
           </h1>
           <p className="mt-3 text-balance text-[15px] leading-relaxed text-white/65">
             Escolha um caminho, avance nos cursos e comprove sua evolução com
@@ -91,7 +91,7 @@ export function LoginVisualPanel() {
         </div>
 
         <div className="mt-6 flex items-center gap-5 text-[12px] text-white/55">
-          <FooterStat label="Trilhas ativas" value="24" />
+          <FooterStat label="Aplicações ativas" value="24" />
           <span aria-hidden className="h-3 w-px bg-white/10" />
           <FooterStat label="Cursos" value="10" />
           <span aria-hidden className="h-3 w-px bg-white/10" />
@@ -148,7 +148,7 @@ function FloatingCards() {
         style={{ animationDelay: "1.2s" }}
       >
         <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-white/50">
-          <span>Trilha em andamento</span>
+          <span>Curso em andamento</span>
           <span className="text-white/70">82%</span>
         </div>
         <p className="mt-1.5 text-sm font-semibold text-white">CRM essencial</p>

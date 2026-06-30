@@ -29,11 +29,11 @@ export async function generateMetadata({
   const category = await findCategory(categorySlug);
 
   if (!category) {
-    return { title: "Trilha não encontrada · Universidade" };
+    return { title: "Aplicação não encontrada · Universidade" };
   }
 
   return {
-    title: `${category.name} · Trilhas · Universidade`,
+    title: `${category.name} · Aplicações · Universidade`,
     description: category.tagline,
   };
 }
@@ -65,10 +65,10 @@ export default async function TrackCategoryDetailPage({ params }: PageProps) {
           </Link>
           <span aria-hidden>/</span>
           <Link
-            href="/dashboard/trilhas"
+            href="/dashboard/aplicacoes"
             className="transition-colors hover:text-foreground"
           >
-            Trilhas
+            Aplicações
           </Link>
           <span aria-hidden>/</span>
           <span className="min-w-0 truncate text-foreground-subtitle">
@@ -123,11 +123,11 @@ export default async function TrackCategoryDetailPage({ params }: PageProps) {
             aplicação no backoffice para que apareçam aqui.
           </p>
           <Link
-            href="/dashboard/trilhas"
+            href="/dashboard/aplicacoes"
             className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-brand-primary transition-colors hover:underline"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-            Voltar para Trilhas
+            Voltar para Aplicações
           </Link>
         </div>
       )}
