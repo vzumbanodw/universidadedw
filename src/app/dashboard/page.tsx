@@ -9,8 +9,14 @@ import {
   PlayCircle,
   type LucideIcon,
 } from "lucide-react";
-import { mockCertificates } from "@/data/mock-certificates";
 import { readContent } from "@/lib/content/store.server";
+import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getCurrentStudent } from "@/lib/auth/student";
+import {
+  categoryWithRealProgress,
+  courseWithRealProgress,
+  isCertificateEarned,
+} from "@/lib/student-progress";
 import { cn } from "@/lib/utils";
 import type { AdminCategory, AdminCourse } from "@/types/admin";
 
@@ -36,6 +42,8 @@ type Feature = {
 function buildFeatures(
   categories: AdminCategory[],
   courses: AdminCourse[],
+  certTotal: number,
+  certEarned: number,
 ): Feature[] {
   return [
     {
@@ -79,11 +87,8 @@ function buildFeatures(
       icon: Award,
       accent: "green",
       stats: [
-        { label: "certificados", value: mockCertificates.length },
-        {
-          label: "emitidos",
-          value: mockCertificates.filter((cert) => cert.status === "issued").length,
-        },
+        { label: "certificados", value: certTotal },
+        { label: "disponíveis", value: certEarned },
       ],
     },
   ];
@@ -91,17 +96,30 @@ function buildFeatures(
 
 export default async function DashboardPage() {
   const content = await readContent();
-  const categories = content.categories.filter((c) => c.published);
-  const courses = content.courses.filter((c) => c.published);
+  const student = await getCurrentStudent();
+  const completions = await getStudentCompletions(student?.id);
+  const completedSet = new Set(completions.map((c) => c.lessonId));
 
-  const features = buildFeatures(categories, courses);
+  const categories = content.categories
+    .filter((c) => c.published)
+    .map((c) =>
+      categoryWithRealProgress(c, content.courses, content.lessons, completedSet),
+    );
+  const courses = content.courses
+    .filter((c) => c.published)
+    .map((c) => courseWithRealProgress(c, content.lessons, completedSet));
+
+  const certCourses = courses.filter((c) => c.certificate);
+  const certEarned = certCourses.filter((c) =>
+    isCertificateEarned(c, content.lessons, completedSet),
+  ).length;
+
+  const features = buildFeatures(categories, courses, certCourses.length, certEarned);
 
   const completedCourses = courses.filter(
     (course) => course.status === "completed",
   ).length;
-  const issuedCertificates = mockCertificates.filter(
-    (certificate) => certificate.status === "issued",
-  ).length;
+  const issuedCertificates = certEarned;
   const activeTracks = categories.reduce(
     (sum, category) => sum + category.inProgress,
     0,

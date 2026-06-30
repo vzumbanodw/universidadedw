@@ -1,27 +1,57 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Award, CheckCircle2, Clock, PlayCircle, type LucideIcon } from "lucide-react";
-import { CertificateCard } from "@/components/certificates/CertificateCard";
-import { mockCertificates } from "@/data/mock-certificates";
+import {
+  Award,
+  CheckCircle2,
+  Clock,
+  Download,
+  Lock,
+  type LucideIcon,
+} from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Progress } from "@/components/ui/Progress";
+import { readContent } from "@/lib/content/store.server";
+import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getCurrentStudent } from "@/lib/auth/student";
+import { courseCompletion, videoLessons } from "@/lib/student-progress";
+import { formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Certificados · Universidade",
-  description:
-    "Acompanhe certificados emitidos, disponíveis e em andamento na Universidade Dataweb.",
+  description: "Certificados liberados ao concluir todos os vídeos de um curso.",
 };
 
-export default function CertificadosPage() {
-  const summary = mockCertificates.reduce(
-    (acc, certificate) => {
-      if (certificate.status === "issued") acc.issued += 1;
-      if (certificate.status === "in_progress") acc.inProgress += 1;
-      if (certificate.status === "available") acc.available += 1;
-      acc.minutes += certificate.estimatedMinutes;
-      return acc;
-    },
-    { issued: 0, inProgress: 0, available: 0, minutes: 0 },
-  );
+export const dynamic = "force-dynamic";
+
+function slugOf(href: string, id: string): string {
+  return href.split("/").filter(Boolean).at(-1) ?? id;
+}
+
+export default async function CertificadosPage() {
+  const content = await readContent();
+  const student = await getCurrentStudent();
+  const completions = await getStudentCompletions(student?.id);
+  const completedSet = new Set(completions.map((c) => c.lessonId));
+  const dateByLesson = new Map(completions.map((c) => [c.lessonId, c.completedAt]));
+
+  const certCourses = content.courses.filter((c) => c.published && c.certificate);
+  const items = certCourses.map((course) => {
+    const cc = courseCompletion(course.id, content.lessons, completedSet);
+    const earned = cc.total > 0 && cc.done === cc.total;
+    let earnedAt: string | undefined;
+    if (earned) {
+      const dates = videoLessons(content.lessons, course.id)
+        .map((l) => dateByLesson.get(l.id))
+        .filter((d): d is string => Boolean(d))
+        .sort();
+      earnedAt = dates.at(-1);
+    }
+    return { course, cc, earned, earnedAt, slug: slugOf(course.href, course.id) };
+  });
+
+  const earned = items.filter((i) => i.earned).length;
+  const started = items.filter((i) => !i.earned && i.cc.done > 0).length;
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
@@ -41,27 +71,119 @@ export default function CertificadosPage() {
             Certificados
           </h1>
           <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-foreground-subtitle">
-            Certificações conectadas aos cursos concluídos e às próximas
-            validações de conhecimento da equipe.
+            Conclua <strong className="font-semibold text-foreground">todos os
+            vídeos</strong> de um curso com certificado para liberar o seu para
+            download.
           </p>
         </div>
 
-        <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:w-auto lg:shrink-0">
-          <SummaryTile icon={Award} label="Certificados" value={mockCertificates.length} />
-          <SummaryTile icon={CheckCircle2} label="Emitidos" value={summary.issued} accent="green" />
-          <SummaryTile icon={PlayCircle} label="Em andamento" value={summary.inProgress} accent="teal" />
-          <SummaryTile icon={Clock} label="Minutos" value={summary.minutes} muted />
+        <ul className="grid grid-cols-3 gap-2.5 lg:w-auto lg:shrink-0">
+          <SummaryTile icon={Award} label="Disponíveis" value={items.length} />
+          <SummaryTile icon={CheckCircle2} label="Liberados" value={earned} accent="green" />
+          <SummaryTile icon={Clock} label="Em andamento" value={started} accent="teal" />
         </ul>
       </header>
 
-      <section
-        aria-label="Lista de certificados"
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-      >
-        {mockCertificates.map((certificate) => (
-          <CertificateCard key={certificate.id} certificate={certificate} />
-        ))}
-      </section>
+      {items.length === 0 ? (
+        <div className="rounded-medium border border-dashed border-border-default bg-background-elevated px-6 py-16 text-center">
+          <Award className="mx-auto h-8 w-8 text-foreground-muted" aria-hidden />
+          <p className="mt-3 text-[14px] text-foreground-muted">
+            Nenhum curso com certificado por enquanto. Quando um curso com
+            certificado for publicado, ele aparece aqui.
+          </p>
+        </div>
+      ) : (
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {items.map((item) => (
+            <CertificateCard
+              key={item.course.id}
+              title={item.course.title}
+              category={item.course.categoryName}
+              earned={item.earned}
+              pct={item.cc.pct}
+              earnedAt={item.earnedAt}
+              href={`/dashboard/certificados/${item.slug}`}
+            />
+          ))}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function CertificateCard({
+  title,
+  category,
+  earned,
+  pct,
+  earnedAt,
+  href,
+}: {
+  title: string;
+  category: string;
+  earned: boolean;
+  pct: number;
+  earnedAt?: string;
+  href: string;
+}) {
+  return (
+    <div className="flex flex-col gap-4 rounded-medium border border-border-subtle bg-background-elevated p-5 shadow-elevation-sm">
+      <div className="flex items-start justify-between gap-2">
+        <span
+          aria-hidden
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-regular",
+            earned
+              ? "bg-brand-green/20 text-[#5C8A1F]"
+              : "bg-background-subtle text-foreground-muted",
+          )}
+        >
+          <Award className="h-5 w-5" />
+        </span>
+        {earned ? (
+          <Badge variant="success" size="sm" dot>
+            Disponível
+          </Badge>
+        ) : (
+          <Badge variant="neutral" size="sm">
+            {pct}% concluído
+          </Badge>
+        )}
+      </div>
+
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+          {category}
+        </p>
+        <h3 className="mt-1 line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-foreground-heading">
+          {title}
+        </h3>
+      </div>
+
+      {earned ? (
+        <div className="mt-auto flex flex-col gap-2">
+          {earnedAt ? (
+            <p className="text-[12px] text-foreground-muted">
+              Concluído em {formatDate(earnedAt)}
+            </p>
+          ) : null}
+          <Link
+            href={href}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-regular bg-button-primary px-4 text-sm font-medium text-white shadow-elevation-sm transition-colors hover:bg-brand-dark"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Baixar certificado
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-auto flex flex-col gap-2">
+          <Progress value={pct} tone="primary" size="xs" />
+          <p className="inline-flex items-center gap-1.5 text-[12px] text-foreground-muted">
+            <Lock className="h-3.5 w-3.5" aria-hidden />
+            Conclua todos os vídeos para liberar
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -76,19 +198,16 @@ function SummaryTile({
   icon: Icon,
   label,
   value,
-  muted = false,
   accent,
 }: {
   icon: LucideIcon;
   label: string;
   value: number;
-  muted?: boolean;
   accent?: keyof typeof TILE_ACCENTS;
 }) {
   const iconStyle = accent ? TILE_ACCENTS[accent] : TILE_ACCENTS.default;
-
   return (
-    <li className="flex h-[58px] min-w-[128px] items-center gap-2.5 rounded-regular border border-border-subtle bg-background-elevated px-3 shadow-elevation-sm">
+    <li className="flex h-[58px] min-w-[110px] items-center gap-2.5 rounded-regular border border-border-subtle bg-background-elevated px-3 shadow-elevation-sm">
       <span
         aria-hidden
         className={cn(
@@ -99,18 +218,10 @@ function SummaryTile({
         <Icon className="h-3.5 w-3.5" />
       </span>
       <div className="min-w-0 flex-1">
-        <p
-          title={label}
-          className="truncate text-[10px] font-medium uppercase tracking-[0.08em] text-foreground-muted"
-        >
+        <p className="truncate text-[10px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
           {label}
         </p>
-        <p
-          className={cn(
-            "text-[17px] font-semibold leading-none tabular-nums",
-            muted ? "text-foreground-subtitle" : "text-foreground-heading",
-          )}
-        >
+        <p className="text-[17px] font-semibold leading-none tabular-nums text-foreground-heading">
           {value}
         </p>
       </div>

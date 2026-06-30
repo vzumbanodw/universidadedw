@@ -6,6 +6,9 @@ import { CoursePlayer } from "@/components/courses/CoursePlayer";
 import { Badge } from "@/components/ui/Badge";
 import { Progress } from "@/components/ui/Progress";
 import { readContent } from "@/lib/content/store.server";
+import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getCurrentStudent } from "@/lib/auth/student";
+import { courseCompletion } from "@/lib/student-progress";
 import { formatMinutes } from "@/lib/formatters";
 import type { AdminCourse, AdminLesson } from "@/types/admin";
 import type { CourseLesson } from "@/types/courses";
@@ -69,6 +72,15 @@ export default async function CourseDetailPage({ params }: PageProps) {
     .filter((lesson) => lesson.courseId === course.id && lesson.published)
     .sort((a, b) => a.order - b.order)
     .map(toCourseLesson);
+
+  // Progresso REAL do aluno (conclusão de vídeos).
+  const student = await getCurrentStudent();
+  const completions = await getStudentCompletions(student?.id);
+  const completedSet = new Set(completions.map((c) => c.lessonId));
+  const completedIds = lessons
+    .filter((l) => completedSet.has(l.id))
+    .map((l) => l.id);
+  const realProgress = courseCompletion(course.id, content.lessons, completedSet).pct;
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-6">
@@ -144,7 +156,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
               </Metric>
             </div>
             <Progress
-              value={course.progress}
+              value={realProgress}
               tone="primary"
               size="xs"
               className="mt-4"
@@ -158,7 +170,11 @@ export default async function CourseDetailPage({ params }: PageProps) {
       </header>
 
       {lessons.length > 0 ? (
-        <CoursePlayer course={course} lessons={lessons} />
+        <CoursePlayer
+          course={course}
+          lessons={lessons}
+          initialCompletedIds={completedIds}
+        />
       ) : (
         <div className="rounded-medium border border-dashed border-border-default bg-background-elevated px-6 py-14 text-center">
           <p className="text-[14px] text-foreground-muted">

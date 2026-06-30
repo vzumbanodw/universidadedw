@@ -4,13 +4,20 @@ import {
   Boxes,
   CheckCircle2,
   Compass,
-  Filter,
   PlayCircle,
-  Search,
   type LucideIcon,
 } from "lucide-react";
-import { TrackCategoriesSection } from "@/components/tracks/TrackCategoriesSection";
+import {
+  TracksBrowser,
+  type TrackCategoryWithStatus,
+} from "@/components/tracks/TracksBrowser";
 import { readContent } from "@/lib/content/store.server";
+import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getCurrentStudent } from "@/lib/auth/student";
+import {
+  applicationProgress,
+  categoryWithRealProgress,
+} from "@/lib/student-progress";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -23,36 +30,42 @@ export const dynamic = "force-dynamic";
 
 export default async function TrilhasPage() {
   const content = await readContent();
-  const published = content.categories.filter((c) => c.published);
+  const student = await getCurrentStudent();
+  const completions = await getStudentCompletions(student?.id);
+  const completedSet = new Set(completions.map((c) => c.lessonId));
 
-  const summary = published.reduce(
-    (acc, c) => {
-      acc.tracks += c.trackCount;
-      acc.lessons += c.lessonCount;
-      acc.inProgress += c.inProgress;
-      acc.completed += c.completed;
-      return acc;
-    },
-    { tracks: 0, lessons: 0, inProgress: 0, completed: 0 },
-  );
+  const published = content.categories.filter((c) => c.published);
+  const categories: TrackCategoryWithStatus[] = published.map((c) => {
+    const withProgress = categoryWithRealProgress(
+      c,
+      content.courses,
+      content.lessons,
+      completedSet,
+    );
+    const { status } = applicationProgress(
+      c.id,
+      content.courses,
+      content.lessons,
+      completedSet,
+    );
+    return { ...withProgress, status };
+  });
+
+  const summary: Summary = {
+    tracks: published.reduce((acc, c) => acc + c.trackCount, 0),
+    lessons: published.reduce((acc, c) => acc + c.lessonCount, 0),
+    inProgress: categories.filter((c) => c.status === "in_progress").length,
+    completed: categories.filter((c) => c.status === "completed").length,
+  };
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
       <PageHeader summary={summary} />
 
-      <FilterBar />
-
-      <TrackCategoriesSection
-        eyebrow="Aplicações"
-        title="Trilhas por aplicação"
-        description="Domine cada aplicação da plataforma na ordem certa, do primeiro acesso até a operação avançada."
-        categories={published}
-      />
+      <TracksBrowser categories={categories} />
     </div>
   );
 }
-
-/* ---------------------------------- Header --------------------------------- */
 
 type Summary = {
   tracks: number;
@@ -65,7 +78,10 @@ function PageHeader({ summary }: { summary: Summary }) {
   return (
     <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
-        <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-1.5 text-[12px] text-foreground-muted">
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-2 flex items-center gap-1.5 text-[12px] text-foreground-muted"
+        >
           <Link href="/dashboard" className="hover:text-foreground transition-colors">
             Dashboard
           </Link>
@@ -76,7 +92,8 @@ function PageHeader({ summary }: { summary: Summary }) {
           Trilhas
         </h1>
         <p className="mt-2 max-w-[60ch] text-[14px] leading-relaxed text-foreground-subtitle">
-          Trilhas de aprendizado organizadas por <strong className="font-semibold text-foreground">aplicação</strong> da
+          Trilhas de aprendizado organizadas por{" "}
+          <strong className="font-semibold text-foreground">aplicação</strong> da
           plataforma. Escolha o caminho que faz sentido para o seu papel hoje.
         </p>
       </div>
@@ -154,58 +171,5 @@ function SummaryTile({
         </p>
       </div>
     </li>
-  );
-}
-
-/* --------------------------------- Filter bar ------------------------------ */
-
-function FilterBar() {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="relative flex h-10 flex-1 items-center rounded-regular border border-border-subtle bg-background-elevated transition-colors focus-within:border-foreground-subtitle">
-        <Search aria-hidden className="ml-3 h-4 w-4 text-foreground-muted" />
-        <input
-          type="search"
-          aria-label="Buscar trilhas"
-          placeholder="Buscar trilhas ou aplicações…"
-          className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <FilterPill active>Todas</FilterPill>
-        <FilterPill>Em andamento</FilterPill>
-        <FilterPill>Concluídas</FilterPill>
-        <button
-          type="button"
-          aria-label="Mais filtros"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-regular border border-border-subtle bg-background-elevated text-foreground-muted transition-colors hover:border-border-default hover:text-foreground"
-        >
-          <Filter className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function FilterPill({
-  children,
-  active = false,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      className={cn(
-        "inline-flex h-10 items-center rounded-regular px-3.5 text-[13px] font-medium transition-colors",
-        active
-          ? "border border-foreground-heading bg-foreground-heading text-background-elevated"
-          : "border border-border-subtle bg-background-elevated text-foreground-subtitle hover:border-border-default hover:bg-background-subtle hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
   );
 }

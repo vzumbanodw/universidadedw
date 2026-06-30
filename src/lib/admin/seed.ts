@@ -3,7 +3,6 @@ import {
   mockModuleCategories,
 } from "@/data/mock-track-categories";
 import { mockCourses, getCourseLessons } from "@/data/mock-courses";
-import { mockCertificates } from "@/data/mock-certificates";
 import type {
   AccessRequest,
   AdminCategory,
@@ -290,35 +289,6 @@ const SEED_RELEASE_NOTES: ReleaseNote[] = [
   },
 ];
 
-/**
- * Certificados emitidos de exemplo. Derivados dos mocks de certificado, mas
- * associados aos membros do seed para que a área de certificados e o perfil do
- * aluno já mostrem dados realistas.
- */
-function seedCertificates(): IssuedCertificate[] {
-  return mockCertificates.map((cert, index) => {
-    const member = SEED_MEMBERS[index % SEED_MEMBERS.length]!;
-    const status: IssuedCertificate["status"] =
-      cert.status === "issued"
-        ? "issued"
-        : cert.status === "in_progress"
-          ? "in_progress"
-          : "available";
-    return {
-      id: `cert_${member.id}_${index}`,
-      studentName: member.name,
-      studentEmail: member.email,
-      companyName: SEED_COMPANY.name,
-      courseTitle: cert.courseTitle,
-      status,
-      progress: cert.progress,
-      workloadMinutes: cert.estimatedMinutes,
-      credentialId: cert.credentialId,
-      issuedAt: cert.issuedAt,
-    };
-  });
-}
-
 export function createSeedState(): AdminState {
   return {
     categories: seedCategories(),
@@ -329,7 +299,7 @@ export function createSeedState(): AdminState {
     members: SEED_MEMBERS,
     accessRequests: [],
     maturityLevels: DEFAULT_MATURITY_LEVELS,
-    certificates: seedCertificates(),
+    certificates: [],
     releaseNotes: SEED_RELEASE_NOTES,
     settings: DEFAULT_SETTINGS,
   };

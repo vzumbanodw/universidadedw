@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { Maximize, Minimize, Pause, Play, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -80,12 +80,24 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
+export function YouTubePlayer({
+  id,
+  title,
+  onEnded,
+}: {
+  id: string;
+  title?: string;
+  onEnded?: () => void;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,7 +124,9 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
         },
         events: {
           onStateChange: (event) => {
-            if (!cancelled) setPlaying(event.data === YT.PlayerState.PLAYING);
+            if (cancelled) return;
+            setPlaying(event.data === YT.PlayerState.PLAYING);
+            if (event.data === YT.PlayerState.ENDED) onEndedRef.current?.();
           },
         },
       });
@@ -129,6 +143,15 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
       if (host) host.innerHTML = "";
     };
   }, [id]);
+
+  // Mantém o estado de tela cheia sincronizado.
+  useEffect(() => {
+    function onFsChange() {
+      setIsFullscreen(document.fullscreenElement === rootRef.current);
+    }
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
 
   // Atualiza tempo/duração para a barra de progresso.
   useEffect(() => {
@@ -176,10 +199,18 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
     }
   }
 
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      rootRef.current?.requestFullscreen().catch(() => {});
+    }
+  }
+
   const progressPct = duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
 
   return (
-    <div className="absolute inset-0">
+    <div ref={rootRef} className="absolute inset-0 bg-black">
       {/* iframe do YouTube — sem eventos de ponteiro (interação só pela camada) */}
       <div ref={hostRef} className="pointer-events-none h-full w-full" />
 
@@ -253,6 +284,20 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
           <span className="shrink-0 text-[11.5px] tabular-nums text-white/85">
             {formatTime(current)} / {formatTime(duration)}
           </span>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15"
+          >
+            {isFullscreen ? (
+              <Minimize className="h-4 w-4" aria-hidden />
+            ) : (
+              <Maximize className="h-4 w-4" aria-hidden />
+            )}
+          </button>
         </div>
       </div>
     </div>

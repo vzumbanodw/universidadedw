@@ -26,6 +26,8 @@ import type { Course, CourseLesson } from "@/types/courses";
 type CoursePlayerProps = {
   course: Course;
   lessons: CourseLesson[];
+  /** Ids das aulas já concluídas por este aluno (progresso real). */
+  initialCompletedIds?: string[];
 };
 
 const RESOURCE_ICON = {
@@ -34,17 +36,49 @@ const RESOURCE_ICON = {
   Exercicio: BookOpen,
 } as const;
 
-export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
+export function CoursePlayer({
+  course,
+  lessons,
+  initialCompletedIds = [],
+}: CoursePlayerProps) {
+  const [completedIds, setCompletedIds] = useState<Set<string>>(
+    () => new Set(initialCompletedIds),
+  );
+  const [flashDone, setFlashDone] = useState(false);
+
   const firstOpenLesson = useMemo(() => {
-    const index = lessons.findIndex((lesson) => !lesson.completed);
+    const set = new Set(initialCompletedIds);
+    const index = lessons.findIndex((lesson) => !set.has(lesson.id));
     return index === -1 ? 0 : index;
-  }, [lessons]);
+  }, [lessons, initialCompletedIds]);
 
   const [selectedIndex, setSelectedIndex] = useState(firstOpenLesson);
   const selectedLesson = lessons[selectedIndex] ?? lessons[0]!;
-  const completedCount = lessons.filter((lesson) => lesson.completed).length;
+  const selectedCompleted = completedIds.has(selectedLesson.id);
+  const completedCount = lessons.filter((l) => completedIds.has(l.id)).length;
+  const videoCount = lessons.filter((l) => l.videoUrl).length;
+  const doneVideoCount = lessons.filter(
+    (l) => l.videoUrl && completedIds.has(l.id),
+  ).length;
+  const livePct = videoCount > 0 ? Math.round((doneVideoCount / videoCount) * 100) : 0;
   const selectedNumber = selectedIndex + 1;
   const embed = getVideoEmbed(selectedLesson.videoUrl);
+
+  async function markComplete(lessonId: string) {
+    if (completedIds.has(lessonId)) return;
+    setCompletedIds((prev) => new Set(prev).add(lessonId));
+    setFlashDone(true);
+    window.setTimeout(() => setFlashDone(false), 4000);
+    try {
+      await fetch("/api/progress/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId }),
+      });
+    } catch {
+      /* offline: segue marcado localmente; tenta de novo no próximo fim de vídeo */
+    }
+  }
 
   function goTo(delta: number) {
     setSelectedIndex((current) =>
@@ -64,6 +98,7 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                     key={embed.id}
                     id={embed.id}
                     title={selectedLesson.title}
+                    onEnded={() => markComplete(selectedLesson.id)}
                   />
                 ) : embed.kind === "iframe" ? (
                   <iframe
@@ -79,17 +114,27 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                     key={embed.src}
                     src={embed.src}
                     controls
+                    onEnded={() => markComplete(selectedLesson.id)}
                     className="absolute inset-0 h-full w-full bg-black"
                   />
                 )}
+
+                {flashDone ? (
+                  <div className="pointer-events-none absolute left-1/2 top-4 z-30 -translate-x-1/2 animate-fade-in-up">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-green/95 px-3 py-1.5 text-[12.5px] font-semibold text-white shadow-elevation-lg">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden />
+                      Aula concluída
+                    </span>
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-col gap-1.5 border-t border-border-subtle px-5 py-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="primary" size="sm">
                     Aula {selectedNumber}
                   </Badge>
-                  <Badge variant={selectedLesson.completed ? "success" : "orange"} size="sm" dot>
-                    {selectedLesson.completed ? "Concluída" : "Em andamento"}
+                  <Badge variant={selectedCompleted ? "success" : "orange"} size="sm" dot>
+                    {selectedCompleted ? "Concluída" : "Em andamento"}
                   </Badge>
                   <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-foreground-muted">
                     <Clock className="h-3.5 w-3.5" aria-hidden />
@@ -125,8 +170,8 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                   <Badge variant="primary" size="sm">
                     Aula {selectedNumber}
                   </Badge>
-                  <Badge variant={selectedLesson.completed ? "success" : "orange"} size="sm" dot>
-                    {selectedLesson.completed ? "Concluída" : "Em andamento"}
+                  <Badge variant={selectedCompleted ? "success" : "orange"} size="sm" dot>
+                    {selectedCompleted ? "Concluída" : "Em andamento"}
                   </Badge>
                 </div>
 
@@ -263,11 +308,11 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
             </Badge>
           </div>
           <Progress
-            value={course.progress}
+            value={livePct}
             tone="primary"
             size="xs"
             className="mt-4"
-            label={`${course.progress}% do curso`}
+            label={`${livePct}% do curso`}
           />
         </div>
 
@@ -290,7 +335,7 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                   <span
                     className={cn(
                       "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
-                      lesson.completed
+                      completedIds.has(lesson.id)
                         ? "bg-background-success text-foreground-success"
                         : active
                           ? "bg-brand-primary text-white"
@@ -298,7 +343,7 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                     )}
                     aria-hidden
                   >
-                    {lesson.completed ? (
+                    {completedIds.has(lesson.id) ? (
                       <CheckCircle2 className="h-3.5 w-3.5" />
                     ) : (
                       index + 1

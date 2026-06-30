@@ -4,13 +4,15 @@ import {
   Award,
   BookOpen,
   CheckCircle2,
-  Filter,
   PlayCircle,
-  Search,
   type LucideIcon,
 } from "lucide-react";
-import { CoursesSection } from "@/components/courses/CoursesSection";
+import { CoursesBrowser, type ApplicationOption } from "@/components/courses/CoursesBrowser";
 import { readContent } from "@/lib/content/store.server";
+import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getCurrentStudent } from "@/lib/auth/student";
+import { courseWithRealProgress } from "@/lib/student-progress";
+import { slugify } from "@/lib/admin/options";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -23,33 +25,49 @@ export const dynamic = "force-dynamic";
 
 export default async function CursosPage() {
   const content = await readContent();
-  const published = content.courses.filter((c) => c.published);
+  const student = await getCurrentStudent();
+  const completions = await getStudentCompletions(student?.id);
+  const completedSet = new Set(completions.map((c) => c.lessonId));
 
-  const summary = published.reduce(
-    (acc, course) => {
-      acc.courses += 1;
-      acc.lessons += course.lessonsCount;
-      if (course.status === "in_progress") acc.inProgress += 1;
-      if (course.status === "completed") acc.completed += 1;
-      if (course.certificate) acc.certificates += 1;
-      return acc;
-    },
-    { courses: 0, lessons: 0, inProgress: 0, completed: 0, certificates: 0 },
+  const published = content.courses.filter((c) => c.published);
+  const courses = published.map((c) =>
+    courseWithRealProgress(c, content.lessons, completedSet),
   );
+
+  const applications: ApplicationOption[] = content.categories
+    .filter((c) => c.published)
+    .map((c) => ({ id: c.id, name: c.name, slug: slugify(c.name) }));
+
+  // "Continuar de onde parou": curso em andamento com a conclusão mais recente.
+  const inProgress = courses.filter((c) => c.status === "in_progress");
+  const recent = [...completions].sort((a, b) =>
+    b.completedAt.localeCompare(a.completedAt),
+  );
+  let continueCourse = inProgress[0];
+  for (const comp of recent) {
+    const match = inProgress.find((c) => c.id === comp.courseId);
+    if (match) {
+      continueCourse = match;
+      break;
+    }
+  }
+
+  const summary: Summary = {
+    courses: courses.length,
+    lessons: courses.reduce((acc, c) => acc + c.lessonsCount, 0),
+    certificates: courses.filter((c) => c.certificate).length,
+    completed: courses.filter((c) => c.status === "completed").length,
+  };
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
       <PageHeader summary={summary} />
 
-      <FilterBar />
-
-      <FeaturedStrip />
-
-      <CoursesSection
-        eyebrow="Aplicações"
-        title="Cursos por aplicação"
-        description="Aprofunde o uso das aplicações da plataforma com cursos objetivos e orientados à rotina."
-        courses={published}
+      <CoursesBrowser
+        courses={courses}
+        applications={applications}
+        continueHref={continueCourse?.href}
+        continueTitle={continueCourse?.title}
       />
     </div>
   );
@@ -58,9 +76,8 @@ export default async function CursosPage() {
 type Summary = {
   courses: number;
   lessons: number;
-  inProgress: number;
-  completed: number;
   certificates: number;
+  completed: number;
 };
 
 function PageHeader({ summary }: { summary: Summary }) {
@@ -163,117 +180,3 @@ function SummaryTile({
     </li>
   );
 }
-
-function FilterBar() {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="relative flex h-10 flex-1 items-center rounded-regular border border-border-subtle bg-background-elevated transition-colors focus-within:border-foreground-subtitle">
-        <Search aria-hidden className="ml-3 h-4 w-4 text-foreground-muted" />
-        <input
-          type="search"
-          aria-label="Buscar cursos"
-          placeholder="Buscar cursos ou aplicações..."
-          className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
-        />
-      </div>
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:overflow-visible sm:pb-0">
-        <FilterPill active>Todos</FilterPill>
-        <FilterPill>Em andamento</FilterPill>
-        <FilterPill>Certificação</FilterPill>
-        <button
-          type="button"
-          aria-label="Mais filtros"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-regular border border-border-subtle bg-background-elevated text-foreground-muted transition-colors hover:border-border-default hover:text-foreground"
-        >
-          <Filter className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function FilterPill({
-  children,
-  active = false,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      className={cn(
-        "inline-flex h-10 shrink-0 items-center rounded-regular px-3.5 text-[13px] font-medium transition-colors",
-        active
-          ? "border border-foreground-heading bg-foreground-heading text-background-elevated"
-          : "border border-border-subtle bg-background-elevated text-foreground-subtitle hover:border-border-default hover:bg-background-subtle hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function FeaturedStrip() {
-  return (
-    <section
-      aria-label="Atalhos de cursos"
-      className="grid grid-cols-1 gap-3 lg:grid-cols-3"
-    >
-      <ShortcutCard
-        icon={PlayCircle}
-        title="Continuar de onde parou"
-        description="Retome cursos em andamento nas aplicações que você já usa."
-        href="/dashboard/cursos?status=em-andamento"
-      />
-      <ShortcutCard
-        icon={Award}
-        title="Cursos com certificado"
-        description="Priorize conteúdos que geram comprovação para você e sua equipe."
-        href="/dashboard/cursos?certificado=true"
-      />
-      <ShortcutCard
-        icon={BookOpen}
-        title="Começar por uma aplicação"
-        description="Escolha CRM, Analytics, Dilab, OptFacil ou PDF como ponto de partida."
-        href="/dashboard/cursos?tipo=aplicacoes"
-      />
-    </section>
-  );
-}
-
-function ShortcutCard({
-  icon: Icon,
-  title,
-  description,
-  href,
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-start gap-3 rounded-medium border border-border-subtle bg-background-elevated p-4 shadow-elevation-sm transition-[border-color,background-color,box-shadow] hover:border-border-default hover:bg-surface-elevated hover:shadow-elevation-md"
-    >
-      <span
-        aria-hidden
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-regular bg-brand-primary/12 text-brand-primary"
-      >
-        <Icon className="h-[18px] w-[18px]" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[14px] font-semibold tracking-tight text-foreground-heading">
-          {title}
-        </span>
-        <span className="mt-1 block text-[12.5px] leading-relaxed text-foreground-muted">
-          {description}
-        </span>
-      </span>
-    </Link>
-  );
-}
-
