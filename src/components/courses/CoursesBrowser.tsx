@@ -64,10 +64,11 @@ export function CoursesBrowser({ courses }: { courses: Course[] }) {
     });
   }, [courses, query, status, app]);
 
-  function pickApplication(name: string) {
-    setApp(name);
+  function pickApplication(value: string) {
+    // `value` é "all" (remove o filtro) ou o nome de uma aplicação.
+    setApp(value);
     setStatus("all");
-    // Leva o aluno até a lista filtrada pela aplicação escolhida.
+    // Leva o aluno até a lista (filtrada, ou completa quando "all").
     requestAnimationFrame(() => {
       gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -88,8 +89,8 @@ export function CoursesBrowser({ courses }: { courses: Course[] }) {
         <ContinueCard course={continueCourse} />
         <StartByApplicationCard
           applications={applications}
-          selected={app === "all" ? null : app}
-          onPick={pickApplication}
+          value={app}
+          onSelect={pickApplication}
         />
       </section>
 
@@ -173,7 +174,7 @@ export function CoursesBrowser({ courses }: { courses: Course[] }) {
 function ContinueCard({ course }: { course?: Course }) {
   if (!course) {
     return (
-      <div className="flex items-start gap-3 rounded-medium border border-border-subtle bg-background-elevated p-4 shadow-elevation-sm">
+      <div className="flex h-full items-start gap-3 rounded-medium border border-border-subtle bg-background-elevated p-4 shadow-elevation-sm">
         <ShortcutIcon icon={PlayCircle} />
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold tracking-tight text-foreground-heading">
@@ -192,7 +193,7 @@ function ContinueCard({ course }: { course?: Course }) {
   return (
     <Link
       href={course.href}
-      className="group flex items-start gap-3 rounded-medium border border-border-subtle bg-background-elevated p-4 shadow-elevation-sm transition-[border-color,background-color,box-shadow] hover:border-border-default hover:bg-surface-elevated hover:shadow-elevation-md"
+      className="group flex h-full items-start gap-3 rounded-medium border border-border-subtle bg-background-elevated p-4 shadow-elevation-sm transition-[border-color,background-color,box-shadow] hover:border-border-default hover:bg-surface-elevated hover:shadow-elevation-md"
     >
       <ShortcutIcon icon={PlayCircle} />
       <span className="min-w-0 flex-1">
@@ -225,15 +226,16 @@ function ContinueCard({ course }: { course?: Course }) {
 
 function StartByApplicationCard({
   applications,
-  selected,
-  onPick,
+  value,
+  onSelect,
 }: {
   applications: string[];
-  selected: string | null;
-  onPick: (name: string) => void;
+  value: string;
+  onSelect: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const hasFilter = value !== "all";
 
   useEffect(() => {
     if (!open) return;
@@ -253,14 +255,19 @@ function StartByApplicationCard({
     };
   }, [open]);
 
+  function choose(next: string) {
+    onSelect(next);
+    setOpen(false);
+  }
+
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative h-full">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="group flex w-full items-start gap-3 rounded-medium border border-border-subtle bg-background-elevated p-4 text-left shadow-elevation-sm transition-[border-color,background-color,box-shadow] hover:border-border-default hover:bg-surface-elevated hover:shadow-elevation-md"
+        className="group flex h-full w-full items-start gap-3 rounded-medium border border-border-subtle bg-background-elevated p-4 text-left shadow-elevation-sm transition-[border-color,background-color,box-shadow] hover:border-border-default hover:bg-surface-elevated hover:shadow-elevation-md"
       >
         <ShortcutIcon icon={BookOpen} />
         <span className="min-w-0 flex-1">
@@ -268,8 +275,8 @@ function StartByApplicationCard({
             Começar por uma aplicação
           </span>
           <span className="mt-1 block text-[12.5px] leading-relaxed text-foreground-muted">
-            {selected
-              ? `Mostrando cursos de ${selected}.`
+            {hasFilter
+              ? `Mostrando cursos de ${value}.`
               : "Escolha uma aplicação como ponto de partida."}
           </span>
         </span>
@@ -288,41 +295,60 @@ function StartByApplicationCard({
           aria-label="Aplicações"
           className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 max-h-72 overflow-y-auto rounded-medium border border-border-subtle bg-background-elevated p-1.5 shadow-elevation-lg"
         >
-          {applications.length === 0 ? (
-            <p className="px-3 py-2 text-[12.5px] text-foreground-muted">
-              Nenhuma aplicação disponível.
-            </p>
-          ) : (
-            applications.map((name) => {
-              const active = selected === name;
-              return (
-                <button
+          <ApplicationOption
+            label="Todas as aplicações"
+            active={value === "all"}
+            onClick={() => choose("all")}
+          />
+          {applications.length > 0 ? (
+            <>
+              <span
+                aria-hidden
+                className="my-1 block h-px bg-border-subtle"
+              />
+              {applications.map((name) => (
+                <ApplicationOption
                   key={name}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  onClick={() => {
-                    onPick(name);
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-2 rounded-regular px-3 py-2 text-left text-[13px] transition-colors",
-                    active
-                      ? "bg-brand-primary/10 text-foreground-heading"
-                      : "text-foreground-subtitle hover:bg-background-subtle hover:text-foreground",
-                  )}
-                >
-                  <span className="min-w-0 truncate">{name}</span>
-                  {active ? (
-                    <Check className="h-4 w-4 shrink-0 text-brand-primary" aria-hidden />
-                  ) : null}
-                </button>
-              );
-            })
-          )}
+                  label={name}
+                  active={value === name}
+                  onClick={() => choose(name)}
+                />
+              ))}
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+function ApplicationOption({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center justify-between gap-2 rounded-regular px-3 py-2 text-left text-[13px] transition-colors",
+        active
+          ? "bg-brand-primary/10 text-foreground-heading"
+          : "text-foreground-subtitle hover:bg-background-subtle hover:text-foreground",
+      )}
+    >
+      <span className="min-w-0 truncate">{label}</span>
+      {active ? (
+        <Check className="h-4 w-4 shrink-0 text-brand-primary" aria-hidden />
+      ) : null}
+    </button>
   );
 }
 
