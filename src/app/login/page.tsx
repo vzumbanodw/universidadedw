@@ -54,7 +54,7 @@ export default async function LoginPage() {
                 Entrar na Universidade
               </h2>
               <p className="text-[15px] leading-relaxed text-foreground-subtitle">
-                Acesse trilhas, cursos e certificados.
+                Acesse trilhas, cursos.
               </p>
             </div>
 
