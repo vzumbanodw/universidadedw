@@ -9,10 +9,14 @@ import {
   PlayCircle,
   type LucideIcon,
 } from "lucide-react";
-import { mockCertificates } from "@/data/mock-certificates";
 import { readContent } from "@/lib/content/store.server";
+import { getCurrentStudent } from "@/lib/auth/student";
 import { cn } from "@/lib/utils";
-import type { AdminCategory, AdminCourse } from "@/types/admin";
+import type {
+  AdminCategory,
+  AdminCourse,
+  IssuedCertificate,
+} from "@/types/admin";
 
 export const metadata: Metadata = {
   title: "Universidade Dataweb",
@@ -36,6 +40,7 @@ type Feature = {
 function buildFeatures(
   categories: AdminCategory[],
   courses: AdminCourse[],
+  certificates: IssuedCertificate[],
 ): Feature[] {
   return [
     {
@@ -79,10 +84,10 @@ function buildFeatures(
       icon: Award,
       accent: "green",
       stats: [
-        { label: "certificados", value: mockCertificates.length },
+        { label: "certificados", value: certificates.length },
         {
           label: "emitidos",
-          value: mockCertificates.filter((cert) => cert.status === "issued").length,
+          value: certificates.filter((cert) => cert.status === "issued").length,
         },
       ],
     },
@@ -91,15 +96,21 @@ function buildFeatures(
 
 export default async function DashboardPage() {
   const content = await readContent();
+  const student = await getCurrentStudent();
   const categories = content.categories.filter((c) => c.published);
   const courses = content.courses.filter((c) => c.published);
+  const certificates = student
+    ? content.certificates.filter(
+        (c) => c.studentEmail.toLowerCase() === student.email.toLowerCase(),
+      )
+    : [];
 
-  const features = buildFeatures(categories, courses);
+  const features = buildFeatures(categories, courses, certificates);
 
   const completedCourses = courses.filter(
     (course) => course.status === "completed",
   ).length;
-  const issuedCertificates = mockCertificates.filter(
+  const issuedCertificates = certificates.filter(
     (certificate) => certificate.status === "issued",
   ).length;
   const activeTracks = categories.reduce(

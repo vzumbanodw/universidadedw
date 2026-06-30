@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from "react";
 import { Menu, ShieldCheck, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { mockUser } from "@/data/mock-user";
 import { AdminStoreProvider } from "@/lib/admin/store";
 import { AdminSidebar } from "./AdminSidebar";
 
@@ -51,13 +50,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <div className="ml-auto flex items-center gap-3">
                   <span className="hidden text-right leading-tight sm:block">
                     <span className="block text-[12.5px] font-semibold text-foreground-heading">
-                      {mockUser.firstName}
+                      Operador
                     </span>
                     <span className="block text-[11px] text-foreground-muted">
                       Administrador
                     </span>
                   </span>
-                  <Avatar name={mockUser.name} size="md" ring />
+                  <Avatar name="Operador" size="md" ring />
                 </div>
               </div>
             </header>

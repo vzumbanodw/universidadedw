@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import { mockUser } from "@/data/mock-user";
 
 /** Visão da identidade do usuário para a UI do dashboard. */
 export type CurrentUserView = {
@@ -9,6 +8,14 @@ export type CurrentUserView = {
   firstName: string;
   email: string;
   role: string;
+};
+
+/** Identidade neutra quando não há sessão (nunca expõe dados de exemplo). */
+const FALLBACK_USER: CurrentUserView = {
+  name: "Aluno",
+  firstName: "Aluno",
+  email: "",
+  role: "Aluno",
 };
 
 const CurrentUserContext = createContext<CurrentUserView | null>(null);
@@ -28,17 +35,9 @@ export function CurrentUserProvider({
 }
 
 /**
- * Identidade do usuário logado. Em desenvolvimento sem Supabase configurado,
- * cai no `mockUser` para a UI continuar utilizável.
+ * Identidade do usuário logado. Sem sessão (ex.: acesso direto em dev sem
+ * Supabase), cai numa identidade neutra — nunca em dados de exemplo.
  */
 export function useCurrentUser(): CurrentUserView {
-  const ctx = useContext(CurrentUserContext);
-  return (
-    ctx ?? {
-      name: mockUser.name,
-      firstName: mockUser.firstName,
-      email: mockUser.email,
-      role: mockUser.role,
-    }
-  );
+  return useContext(CurrentUserContext) ?? FALLBACK_USER;
 }

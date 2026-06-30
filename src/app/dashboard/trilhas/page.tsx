@@ -4,12 +4,10 @@ import {
   Boxes,
   CheckCircle2,
   Compass,
-  Filter,
   PlayCircle,
-  Search,
   type LucideIcon,
 } from "lucide-react";
-import { TrackCategoriesSection } from "@/components/tracks/TrackCategoriesSection";
+import { TrilhasBrowser } from "@/components/tracks/TrilhasBrowser";
 import { readContent } from "@/lib/content/store.server";
 import { cn } from "@/lib/utils";
 
@@ -40,14 +38,7 @@ export default async function TrilhasPage() {
     <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
       <PageHeader summary={summary} />
 
-      <FilterBar />
-
-      <TrackCategoriesSection
-        eyebrow="Aplicações"
-        title="Trilhas por aplicação"
-        description="Domine cada aplicação da plataforma na ordem certa, do primeiro acesso até a operação avançada."
-        categories={published}
-      />
+      <TrilhasBrowser categories={published} />
     </div>
   );
 }
@@ -154,58 +145,5 @@ function SummaryTile({
         </p>
       </div>
     </li>
-  );
-}
-
-/* --------------------------------- Filter bar ------------------------------ */
-
-function FilterBar() {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="relative flex h-10 flex-1 items-center rounded-regular border border-border-subtle bg-background-elevated transition-colors focus-within:border-foreground-subtitle">
-        <Search aria-hidden className="ml-3 h-4 w-4 text-foreground-muted" />
-        <input
-          type="search"
-          aria-label="Buscar trilhas"
-          placeholder="Buscar trilhas ou aplicações…"
-          className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <FilterPill active>Todas</FilterPill>
-        <FilterPill>Em andamento</FilterPill>
-        <FilterPill>Concluídas</FilterPill>
-        <button
-          type="button"
-          aria-label="Mais filtros"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-regular border border-border-subtle bg-background-elevated text-foreground-muted transition-colors hover:border-border-default hover:text-foreground"
-        >
-          <Filter className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function FilterPill({
-  children,
-  active = false,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      className={cn(
-        "inline-flex h-10 items-center rounded-regular px-3.5 text-[13px] font-medium transition-colors",
-        active
-          ? "border border-foreground-heading bg-foreground-heading text-background-elevated"
-          : "border border-border-subtle bg-background-elevated text-foreground-subtitle hover:border-border-default hover:bg-background-subtle hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
   );
 }

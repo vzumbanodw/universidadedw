@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Award, CheckCircle2, Clock, PlayCircle, type LucideIcon } from "lucide-react";
 import { CertificateCard } from "@/components/certificates/CertificateCard";
-import { mockCertificates } from "@/data/mock-certificates";
+import { readContent } from "@/lib/content/store.server";
+import { getCurrentStudent } from "@/lib/auth/student";
 import { cn } from "@/lib/utils";
+import type { IssuedCertificate } from "@/types/admin";
+import type { Certificate } from "@/types/certificates";
 
 export const metadata: Metadata = {
   title: "Certificados · Universidade",
@@ -11,16 +14,43 @@ export const metadata: Metadata = {
     "Acompanhe certificados emitidos, disponíveis e em andamento na Universidade Dataweb.",
 };
 
-export default function CertificadosPage() {
-  const summary = mockCertificates.reduce(
+export const dynamic = "force-dynamic";
+
+/** Converte o certificado emitido (backoffice) na visão consumida pelo card. */
+function toCertificateView(c: IssuedCertificate): Certificate {
+  return {
+    id: c.id,
+    title: c.courseTitle,
+    description: "",
+    courseTitle: c.courseTitle,
+    status: c.status,
+    progress: c.progress,
+    issuedAt: c.issuedAt,
+    credentialId: c.credentialId,
+    estimatedMinutes: c.workloadMinutes,
+    skills: [],
+  };
+}
+
+export default async function CertificadosPage() {
+  const content = await readContent();
+  const student = await getCurrentStudent();
+  const certificates = (
+    student
+      ? content.certificates.filter(
+          (c) => c.studentEmail.toLowerCase() === student.email.toLowerCase(),
+        )
+      : []
+  ).map(toCertificateView);
+
+  const summary = certificates.reduce(
     (acc, certificate) => {
       if (certificate.status === "issued") acc.issued += 1;
       if (certificate.status === "in_progress") acc.inProgress += 1;
-      if (certificate.status === "available") acc.available += 1;
       acc.minutes += certificate.estimatedMinutes;
       return acc;
     },
-    { issued: 0, inProgress: 0, available: 0, minutes: 0 },
+    { issued: 0, inProgress: 0, minutes: 0 },
   );
 
   return (
@@ -47,21 +77,47 @@ export default function CertificadosPage() {
         </div>
 
         <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:w-auto lg:shrink-0">
-          <SummaryTile icon={Award} label="Certificados" value={mockCertificates.length} />
+          <SummaryTile icon={Award} label="Certificados" value={certificates.length} />
           <SummaryTile icon={CheckCircle2} label="Emitidos" value={summary.issued} accent="green" />
           <SummaryTile icon={PlayCircle} label="Em andamento" value={summary.inProgress} accent="teal" />
           <SummaryTile icon={Clock} label="Minutos" value={summary.minutes} muted />
         </ul>
       </header>
 
-      <section
-        aria-label="Lista de certificados"
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+      {certificates.length > 0 ? (
+        <section
+          aria-label="Lista de certificados"
+          className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+        >
+          {certificates.map((certificate) => (
+            <CertificateCard key={certificate.id} certificate={certificate} />
+          ))}
+        </section>
+      ) : (
+        <EmptyState />
+      )}
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-large border border-dashed border-border-default bg-background-elevated px-6 py-16 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-medium bg-brand-primary/10 text-brand-primary">
+        <Award className="h-6 w-6" aria-hidden />
+      </span>
+      <h2 className="text-[16px] font-semibold tracking-tight text-foreground-heading">
+        Você ainda não tem certificados
+      </h2>
+      <p className="max-w-[44ch] text-[13.5px] leading-relaxed text-foreground-muted">
+        Conclua cursos com certificação para que eles apareçam aqui.
+      </p>
+      <Link
+        href="/dashboard/cursos"
+        className="mt-1 inline-flex h-9 items-center rounded-regular border border-border-default px-3.5 text-[13px] font-medium text-foreground-subtitle transition-colors hover:border-brand-primary hover:text-brand-primary"
       >
-        {mockCertificates.map((certificate) => (
-          <CertificateCard key={certificate.id} certificate={certificate} />
-        ))}
-      </section>
+        Ver cursos
+      </Link>
     </div>
   );
 }

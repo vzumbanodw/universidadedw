@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { Maximize, Minimize, Pause, Play, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -80,12 +80,24 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/** Elemento atualmente em tela cheia (com fallback para Safari/WebKit). */
+function getFullscreenElement(): Element | null {
+  return (
+    document.fullscreenElement ??
+    (document as unknown as { webkitFullscreenElement?: Element })
+      .webkitFullscreenElement ??
+    null
+  );
+}
+
 export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,11 +159,47 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
     return () => clearInterval(interval);
   }, []);
 
+  // Mantém o estado de tela cheia sincronizado (inclui ESC e botões nativos).
+  useEffect(() => {
+    function onChange() {
+      setFullscreen(Boolean(getFullscreenElement()));
+    }
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
+
   function toggle() {
     const player = playerRef.current;
     if (!player) return;
     if (playing) player.pauseVideo();
     else player.playVideo();
+  }
+
+  /** Alterna a tela cheia do container do player (com fallback WebKit). */
+  async function toggleFullscreen() {
+    const el = containerRef.current;
+    if (!el) return;
+    try {
+      if (getFullscreenElement()) {
+        const exit =
+          document.exitFullscreen ??
+          (document as unknown as { webkitExitFullscreen?: () => void })
+            .webkitExitFullscreen;
+        await exit?.call(document);
+      } else {
+        const request =
+          el.requestFullscreen ??
+          (el as unknown as { webkitRequestFullscreen?: () => void })
+            .webkitRequestFullscreen;
+        await request?.call(el);
+      }
+    } catch {
+      // alguns navegadores bloqueiam fora de um gesto do usuário
+    }
   }
 
   /** Retrocede `seconds` (nunca avança). */
@@ -179,7 +227,7 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
   const progressPct = duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
 
   return (
-    <div className="absolute inset-0">
+    <div ref={containerRef} className="absolute inset-0 bg-black">
       {/* iframe do YouTube — sem eventos de ponteiro (interação só pela camada) */}
       <div ref={hostRef} className="pointer-events-none h-full w-full" />
 
@@ -253,6 +301,20 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
           <span className="shrink-0 text-[11.5px] tabular-nums text-white/85">
             {formatTime(current)} / {formatTime(duration)}
           </span>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            title={fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15"
+          >
+            {fullscreen ? (
+              <Minimize className="h-4 w-4" aria-hidden />
+            ) : (
+              <Maximize className="h-4 w-4" aria-hidden />
+            )}
+          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,10 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { createSeedState, type AdminState } from "@/lib/admin/seed";
+import {
+  createEmptyState,
+  createSeedState,
+  type AdminState,
+} from "@/lib/admin/seed";
 import {
   createSupabaseReadClient,
   createSupabaseServiceClient,
@@ -38,19 +42,22 @@ const FILE = path.join(DATA_DIR, "content.json");
 let fileCache: AdminState | null = null;
 
 function normalize(state: Partial<AdminState>): AdminState {
-  const seed = createSeedState();
+  // Coleções ausentes caem para o estado VAZIO (não para o seed): garante que
+  // um documento parcial nunca traga conteúdo de demonstração de volta. Os
+  // defaults de config (settings, maturityLevels) vêm de createEmptyState.
+  const base = createEmptyState();
   return {
-    categories: state.categories ?? seed.categories,
-    courses: state.courses ?? seed.courses,
-    lessons: state.lessons ?? seed.lessons,
-    trails: state.trails ?? seed.trails,
-    companies: state.companies ?? seed.companies,
-    members: state.members ?? seed.members,
-    accessRequests: state.accessRequests ?? seed.accessRequests,
-    maturityLevels: state.maturityLevels ?? seed.maturityLevels,
-    certificates: state.certificates ?? seed.certificates,
-    releaseNotes: state.releaseNotes ?? seed.releaseNotes,
-    settings: state.settings ?? seed.settings,
+    categories: state.categories ?? base.categories,
+    courses: state.courses ?? base.courses,
+    lessons: state.lessons ?? base.lessons,
+    trails: state.trails ?? base.trails,
+    companies: state.companies ?? base.companies,
+    members: state.members ?? base.members,
+    accessRequests: state.accessRequests ?? base.accessRequests,
+    maturityLevels: state.maturityLevels ?? base.maturityLevels,
+    certificates: state.certificates ?? base.certificates,
+    releaseNotes: state.releaseNotes ?? base.releaseNotes,
+    settings: state.settings ?? base.settings,
   };
 }
 
@@ -65,8 +72,10 @@ export async function readContent(): Promise<AdminState> {
     const state = await readStateFromSupabase();
     if (state) return state;
 
-    // Tabelas existem mas estão vazias → migra o documento atual para elas.
-    const initial = await migrationSource();
+    // Tabelas existem mas estão vazias. Migra um documento legado (app_content),
+    // se houver; caso contrário inicializa VAZIO (só config, zero demonstração).
+    // NUNCA semeia dados de exemplo num banco real.
+    const initial = (await readContentDocRaw()) ?? createEmptyState();
     if (hasServiceRole()) {
       try {
         await writeStateToSupabase(initial);
@@ -81,7 +90,8 @@ export async function readContent(): Promise<AdminState> {
       return readFromContentDoc();
     }
     console.error("[content] falha lendo do Supabase:", (error as Error).message);
-    return createSeedState();
+    // Em caso de falha com Supabase configurado, jamais expõe dados de seed.
+    return createEmptyState();
   }
 }
 
@@ -97,18 +107,6 @@ export async function writeContent(next: AdminState): Promise<AdminState> {
       return writeToContentDoc(next);
     }
     throw error;
-  }
-}
-
-/** De onde puxar o estado inicial ao seedar as tabelas normalizadas. */
-async function migrationSource(): Promise<AdminState> {
-  const doc = await readContentDocRaw();
-  if (doc) return doc;
-  try {
-    const raw = await fs.readFile(FILE, "utf8");
-    return normalize(JSON.parse(raw) as Partial<AdminState>);
-  } catch {
-    return createSeedState();
   }
 }
 
@@ -132,13 +130,13 @@ async function readContentDocRaw(): Promise<AdminState | null> {
   }
 }
 
-/** Leitura do documento JSONB com auto-seed (fallback pré-migração). */
+/** Leitura do documento JSONB. Inicializa VAZIO se ausente (nunca com seed). */
 async function readFromContentDoc(): Promise<AdminState> {
   const doc = await readContentDocRaw();
   if (doc) return doc;
-  const seed = createSeedState();
-  if (hasServiceRole()) await persistToContentDoc(seed);
-  return seed;
+  const initial = createEmptyState();
+  if (hasServiceRole()) await persistToContentDoc(initial);
+  return initial;
 }
 
 async function writeToContentDoc(next: AdminState): Promise<AdminState> {
@@ -171,7 +169,12 @@ async function readFromFile(): Promise<AdminState> {
     const raw = await fs.readFile(FILE, "utf8");
     fileCache = normalize(JSON.parse(raw) as Partial<AdminState>);
   } catch {
-    fileCache = createSeedState();
+    // Dados de demonstração só no protótipo local. Em produção (mesmo sem
+    // Supabase, por configuração incorreta) nunca expõe seed.
+    fileCache =
+      process.env.NODE_ENV === "production"
+        ? createEmptyState()
+        : createSeedState();
     await persistToFile(fileCache);
   }
   return fileCache;

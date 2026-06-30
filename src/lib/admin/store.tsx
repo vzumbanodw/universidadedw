@@ -23,11 +23,7 @@ import type {
   MaturityLevel,
   ReleaseNote,
 } from "@/types/admin";
-import {
-  createSeedState,
-  DEFAULT_SETTINGS,
-  type AdminState,
-} from "./seed";
+import { DEFAULT_SETTINGS, type AdminState } from "./defaults";
 
 /**
  * Store do backoffice. Lê e grava no conteúdo compartilhado do servidor
@@ -100,8 +96,6 @@ type AdminStore = AdminState & {
   // Novidades & Updates
   upsertReleaseNote: (note: ReleaseNote) => void;
   deleteReleaseNote: (id: string) => void;
-
-  resetToSeed: () => void;
 };
 
 /** Chaves de `AdminState` cujo valor é uma coleção (array) com itens `{ id }`. */
@@ -244,8 +238,6 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
 
       upsertReleaseNote: (note) => upsert("releaseNotes", note),
       deleteReleaseNote: (id) => remove("releaseNotes", id),
-
-      resetToSeed: () => setState(createSeedState()),
     }),
     [state, ready, upsert, remove],
   );
