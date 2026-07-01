@@ -23,6 +23,7 @@ import { getVideoEmbed } from "@/lib/video";
 import { YouTubePlayer } from "@/components/courses/YouTubePlayer";
 import {
   useCourseSummary,
+  useLessonPosition,
   useLessonStatuses,
   useProgressRecorder,
 } from "@/lib/progress/ProgressProvider";
@@ -60,6 +61,7 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
   const selectedLesson = lessons[selectedIndex] ?? lessons[0]!;
   const selectedNumber = selectedIndex + 1;
   const embed = getVideoEmbed(selectedLesson.videoUrl);
+  const savedSeconds = useLessonPosition(courseId, selectedLesson.id);
 
   // Progresso real do aluno (runtime) tem prioridade sobre os valores autorados.
   const completedCount = summary?.completedCount ?? 0;
@@ -108,6 +110,12 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
     doneRef.current = true;
     recorder.markCompleted(courseId, selectedLesson.id, totalLessons);
   }
+  // Ao pausar, salva a posição na hora (sem esperar o throttle de 5s).
+  function handlePause(seconds: number, duration: number) {
+    if (doneRef.current || !(seconds > 0)) return;
+    lastPersistRef.current = seconds;
+    recorder.markPosition(courseId, selectedLesson.id, seconds, duration, totalLessons);
+  }
   function handleProgress(seconds: number, duration: number) {
     if (doneRef.current) return;
     const ratio = duration > 0 ? seconds / duration : 0;
@@ -141,7 +149,9 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                     key={embed.id}
                     id={embed.id}
                     title={selectedLesson.title}
+                    startSeconds={savedSeconds}
                     onPlay={handlePlay}
+                    onPause={handlePause}
                     onProgress={handleProgress}
                     onEnded={handleEnded}
                   />
@@ -159,9 +169,20 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                     key={embed.src}
                     src={embed.src}
                     controls
+                    onLoadedMetadata={(event) => {
+                      if (savedSeconds > 1) {
+                        event.currentTarget.currentTime = savedSeconds;
+                      }
+                    }}
                     onPlay={handlePlay}
                     onTimeUpdate={(event) =>
                       handleProgress(
+                        event.currentTarget.currentTime,
+                        event.currentTarget.duration,
+                      )
+                    }
+                    onPause={(event) =>
+                      handlePause(
                         event.currentTarget.currentTime,
                         event.currentTarget.duration,
                       )

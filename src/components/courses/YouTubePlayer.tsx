@@ -114,17 +114,23 @@ export function YouTubePlayer({
   id,
   title,
   onPlay,
+  onPause,
   onProgress,
   onEnded,
+  startSeconds,
 }: {
   id: string;
   title?: string;
   /** Disparado quando o vídeo começa a tocar. */
   onPlay?: () => void;
+  /** Disparado quando o vídeo é pausado (bom momento para salvar a posição). */
+  onPause?: (seconds: number, duration: number) => void;
   /** Posição/duração atuais (segundos), ~4x por segundo. */
   onProgress?: (seconds: number, duration: number) => void;
   /** Disparado quando o vídeo termina. */
   onEnded?: () => void;
+  /** Posição inicial (segundos) para retomar de onde parou. */
+  startSeconds?: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -133,12 +139,16 @@ export function YouTubePlayer({
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+  const [ready, setReady] = useState(false);
+  const resumedRef = useRef(false);
 
   // Callbacks em refs: sempre a versão mais recente, sem re-assinar os efeitos.
   const onPlayRef = useRef(onPlay);
+  const onPauseRef = useRef(onPause);
   const onProgressRef = useRef(onProgress);
   const onEndedRef = useRef(onEnded);
   onPlayRef.current = onPlay;
+  onPauseRef.current = onPause;
   onProgressRef.current = onProgress;
   onEndedRef.current = onEnded;
 
@@ -154,8 +164,11 @@ export function YouTubePlayer({
 
       playerRef.current = new YT.Player(mount, {
         videoId: id,
-        width: "100%",
-        height: "100%",
+        // Dimensões grandes no atributo do iframe: o YouTube escolhe a qualidade
+        // pelo tamanho do player, então pedimos 1080p aqui. O CSS abaixo faz o
+        // iframe preencher o container (o tamanho visual continua responsivo).
+        width: "1920",
+        height: "1080",
         playerVars: {
           controls: 0,
           modestbranding: 1,
@@ -169,6 +182,12 @@ export function YouTubePlayer({
         },
         events: {
           onReady: (event) => {
+            if (cancelled) return;
+            forceHighestQuality(event.target);
+            setReady(true);
+          },
+          onPlaybackQualityChange: (event) => {
+            // Reforça a maior qualidade caso o YouTube tente rebaixar.
             if (!cancelled) forceHighestQuality(event.target);
           },
           onStateChange: (event) => {
@@ -178,6 +197,16 @@ export function YouTubePlayer({
             if (isPlaying) {
               onPlayRef.current?.();
               forceHighestQuality(event.target);
+            }
+            if (event.data === YT.PlayerState.PAUSED) {
+              try {
+                onPauseRef.current?.(
+                  event.target.getCurrentTime(),
+                  event.target.getDuration(),
+                );
+              } catch {
+                // métodos ainda indisponíveis
+              }
             }
             if (event.data === YT.PlayerState.ENDED) onEndedRef.current?.();
           },
@@ -216,6 +245,22 @@ export function YouTubePlayer({
     }, 250);
     return () => clearInterval(interval);
   }, []);
+
+  // Retoma de onde parou. Roda quando o player fica pronto e/ou quando a posição
+  // salva chega (o progresso hidrata do localStorage após a montagem).
+  useEffect(() => {
+    if (!ready || resumedRef.current) return;
+    const seconds = startSeconds ?? 0;
+    if (seconds > 1) {
+      try {
+        playerRef.current?.seekTo(seconds, true);
+        setCurrent(seconds);
+      } catch {
+        // player ainda não aceita seek
+      }
+      resumedRef.current = true;
+    }
+  }, [ready, startSeconds]);
 
   // Mantém o estado de tela cheia sincronizado (inclui ESC e botões nativos).
   useEffect(() => {
@@ -286,8 +331,13 @@ export function YouTubePlayer({
 
   return (
     <div ref={containerRef} className="absolute inset-0 bg-black">
-      {/* iframe do YouTube — sem eventos de ponteiro (interação só pela camada) */}
-      <div ref={hostRef} className="pointer-events-none h-full w-full" />
+      {/* iframe do YouTube — sem eventos de ponteiro (interação só pela camada).
+          O iframe é criado com 1920x1080 (dica de qualidade); o CSS abaixo o faz
+          preencher o container visualmente. */}
+      <div
+        ref={hostRef}
+        className="pointer-events-none h-full w-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full"
+      />
 
       {/* Camada que captura o clique no vídeo: alterna play/pause e bloqueia o YouTube */}
       <button

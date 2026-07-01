@@ -144,6 +144,16 @@ export function useLessonStatuses(courseId: string): Record<string, LessonRuntim
   }, [data, courseId]);
 }
 
+/** Posição salva (segundos) de uma aula, para retomar de onde parou. 0 se concluída/sem registro. */
+export function useLessonPosition(courseId: string, lessonId: string): number {
+  const { data } = useProgressContext();
+  return useMemo(() => {
+    const lesson = data.courses[courseId]?.lessons?.[lessonId];
+    if (!lesson || lesson.status === "completed") return 0;
+    return Number.isFinite(lesson.seconds) ? lesson.seconds : 0;
+  }, [data, courseId, lessonId]);
+}
+
 /** Sobrepõe o progresso do aluno sobre os cursos autorados (status + progress). */
 export function useCoursesWithProgress(courses: Course[]): Course[] {
   const { data } = useProgressContext();
