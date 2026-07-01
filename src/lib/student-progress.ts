@@ -47,8 +47,10 @@ export function courseCompletion(
   let done = 0;
   for (const lesson of vids) {
     const p = pctOf(progress, lesson.id);
-    sum += p;
-    if (p >= COMPLETE_THRESHOLD) done += 1;
+    const isDone = p >= COMPLETE_THRESHOLD;
+    // Aula concluída conta como 100% (mesmo se salva em 95–99% antes do ajuste).
+    sum += isDone ? 100 : p;
+    if (isDone) done += 1;
   }
   const pct = total > 0 ? Math.round(sum / total) : 0;
   const status: LearningPathStatus =
@@ -101,7 +103,11 @@ export function applicationProgress(
 
   const total = appVideoLessons.length;
   let sum = 0;
-  for (const lesson of appVideoLessons) sum += pctOf(progress, lesson.id);
+  for (const lesson of appVideoLessons) {
+    const p = pctOf(progress, lesson.id);
+    // Aula concluída conta como 100% na média da aplicação.
+    sum += p >= COMPLETE_THRESHOLD ? 100 : p;
+  }
 
   let completedCourses = 0;
   let inProgressCourses = 0;

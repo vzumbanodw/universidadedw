@@ -82,8 +82,10 @@ export function CoursePlayer({
   const livePct =
     videoLessonList.length > 0
       ? Math.round(
-          videoLessonList.reduce((sum, l) => sum + (percents[l.id] ?? 0), 0) /
-            videoLessonList.length,
+          videoLessonList.reduce((sum, l) => {
+            const p = percents[l.id] ?? 0;
+            return sum + (p >= COMPLETE_THRESHOLD ? 100 : p);
+          }, 0) / videoLessonList.length,
         )
       : 0;
   const courseCompleted =
