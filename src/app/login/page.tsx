@@ -51,10 +51,10 @@ export default async function LoginPage() {
                 <GraduationCap className="h-5 w-5 text-white" aria-hidden />
               </span>
               <h2 className="text-[26px] font-semibold leading-tight tracking-tight text-foreground-heading">
-                Entrar na Universidade Dataweb
+                Entrar na Universidade
               </h2>
               <p className="text-[15px] leading-relaxed text-foreground-subtitle">
-                Acesse aplicações, cursos e certificados.
+                Acesse aplicações e cursos
               </p>
             </div>
 
