@@ -21,10 +21,25 @@ export const metadata: Metadata = {
 const PRINT_CSS = `
 @media print {
   @page { size: A4 landscape; margin: 0; }
+  html, body {
+    width: 297mm !important; height: 210mm !important;
+    margin: 0 !important; padding: 0 !important;
+    overflow: hidden !important; background: #fff !important;
+  }
   body * { visibility: hidden !important; }
-  #certificate, #certificate * { visibility: visible !important; }
+  #certificate, #certificate * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
   #certificate {
-    position: absolute; left: 0; top: 0; width: 100%;
+    position: fixed !important;
+    left: 0 !important; top: 0 !important;
+    width: 297mm !important; height: 210mm !important;
+    max-width: none !important; margin: 0 !important;
+    padding: 16mm !important; box-sizing: border-box !important;
+    display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center !important;
     border: 0 !important; box-shadow: none !important; border-radius: 0 !important;
   }
 }
