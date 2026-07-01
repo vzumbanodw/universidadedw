@@ -100,6 +100,10 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/** Tamanho físico do player (o YouTube escolhe a qualidade pelo tamanho real). */
+const BASE_WIDTH = 1920;
+const BASE_HEIGHT = 1080;
+
 export function YouTubePlayer({
   id,
   title,
@@ -132,6 +136,7 @@ export function YouTubePlayer({
   const [duration, setDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [scale, setScale] = useState(0);
   const resumedRef = useRef(false);
 
   useEffect(() => {
@@ -146,10 +151,9 @@ export function YouTubePlayer({
 
       playerRef.current = new YT.Player(mount, {
         videoId: id,
-        // Dimensões grandes no iframe: o YouTube escolhe a qualidade pelo tamanho
-        // do player, então pedimos 1080p. O CSS faz o iframe preencher o espaço.
-        width: "1920",
-        height: "1080",
+        // O iframe preenche o host (renderizado em 1920x1080 e escalado via CSS).
+        width: "100%",
+        height: "100%",
         playerVars: {
           controls: 0,
           modestbranding: 1,
@@ -209,6 +213,30 @@ export function YouTubePlayer({
     }
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  // MÁXIMA QUALIDADE: o player é renderizado fisicamente em 1920x1080 e escalado
+  // para caber no espaço. Como o YouTube define a qualidade pelo tamanho REAL do
+  // player, ele passa a servir a maior resolução (até 1080p; em tela cheia, mais).
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const update = () => {
+      const w = root.clientWidth;
+      const h = root.clientHeight;
+      if (w > 0 && h > 0) {
+        setScale(Math.min(w / BASE_WIDTH, h / BASE_HEIGHT));
+      }
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(root);
+    // Alguns navegadores não disparam o ResizeObserver ao (des)entrar em tela cheia.
+    document.addEventListener("fullscreenchange", update);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("fullscreenchange", update);
+    };
   }, []);
 
   // Atualiza tempo/duração para a barra de progresso.
@@ -287,12 +315,20 @@ export function YouTubePlayer({
   const progressPct = duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
 
   return (
-    <div ref={rootRef} className="absolute inset-0 bg-black">
-      {/* iframe do YouTube — sem eventos de ponteiro (interação só pela camada).
-          Criado em 1920x1080 (dica de qualidade); o CSS o faz preencher o box. */}
+    <div ref={rootRef} className="absolute inset-0 overflow-hidden bg-black">
+      {/* Player renderizado em 1920x1080 e escalado para caber (máxima qualidade).
+          Sem eventos de ponteiro — a interação é pela camada de controles. */}
       <div
         ref={hostRef}
-        className="pointer-events-none h-full w-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full"
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: BASE_WIDTH,
+          height: BASE_HEIGHT,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+        }}
+        className="pointer-events-none [&_iframe]:h-full [&_iframe]:w-full"
       />
 
       {/* Camada que captura o clique no vídeo: alterna play/pause e bloqueia o YouTube */}
