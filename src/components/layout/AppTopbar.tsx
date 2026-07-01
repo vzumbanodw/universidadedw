@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, Search } from "lucide-react";
+import { LogOut, Menu, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
+import { logout } from "@/lib/auth/client";
 import { getGreeting } from "@/lib/formatters";
 
 type AppTopbarProps = {
@@ -50,16 +51,90 @@ export function AppTopbar({ onOpenMobileNav }: AppTopbarProps) {
           <SearchInput />
         </div>
 
-        {/* Avatar */}
-        <button
-          type="button"
-          aria-label="Abrir menu do usuário"
-          className="rounded-full transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <Avatar name={user.name} size="md" ring />
-        </button>
+        {/* Avatar + menu */}
+        <UserMenu name={user.name} email={user.email} role={user.role} />
       </div>
     </header>
+  );
+}
+
+function UserMenu({
+  name,
+  email,
+  role,
+}: {
+  name: string;
+  email: string;
+  role: string;
+}) {
+  const router = useRouter();
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  async function onLogout() {
+    setSigningOut(true);
+    await logout();
+    router.push("/login");
+    router.refresh();
+  }
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Abrir menu do usuário"
+        className="rounded-full transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <Avatar name={name} size="md" ring />
+      </button>
+
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+8px)] z-40 w-56 overflow-hidden rounded-medium border border-border-subtle bg-background-elevated p-1.5 shadow-elevation-lg"
+        >
+          <div className="px-3 py-2">
+            <p className="truncate text-[13px] font-semibold text-foreground-heading">
+              {name}
+            </p>
+            <p className="truncate text-[12px] text-foreground-muted">
+              {email || role}
+            </p>
+          </div>
+          <span aria-hidden className="my-1 block h-px bg-border-subtle" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onLogout}
+            disabled={signingOut}
+            className="flex w-full items-center gap-2 rounded-regular px-3 py-2 text-left text-[13px] font-medium text-foreground-subtitle transition-colors hover:bg-background-subtle hover:text-foreground disabled:opacity-60"
+          >
+            <LogOut className="h-4 w-4" aria-hidden />
+            {signingOut ? "Saindo…" : "Sair"}
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

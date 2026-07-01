@@ -121,7 +121,9 @@ export async function saveLessonProgress(
 
   const prevPercent = clampPercent(Number(current.data?.percent ?? 0));
   const prevCompletedAt = (current.data?.completed_at as string | null) ?? null;
-  const nextPercent = Math.max(prevPercent, incoming);
+  // Ao atingir o limiar, a aula é CONCLUÍDA → fixa em 100% (barra cheia).
+  const rawNext = Math.max(prevPercent, incoming);
+  const nextPercent = rawNext >= COMPLETE_THRESHOLD ? 100 : rawNext;
   const completedAt =
     nextPercent >= COMPLETE_THRESHOLD
       ? prevCompletedAt ?? new Date().toISOString()

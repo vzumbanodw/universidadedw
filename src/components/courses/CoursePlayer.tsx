@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -51,6 +52,7 @@ export function CoursePlayer({
   initialProgress = [],
   studentId,
 }: CoursePlayerProps) {
+  const router = useRouter();
   // % assistida por aula (0–100). Atualiza ao vivo enquanto o aluno assiste.
   const [percents, setPercents] = useState<Record<string, number>>(() =>
     Object.fromEntries(initialProgress.map((p) => [p.lessonId, p.percent])),
@@ -105,7 +107,9 @@ export function CoursePlayer({
 
   /** Atualiza a % localmente (nunca regride) e salva no servidor. */
   function persistPercent(lessonId: string, rawPercent: number) {
-    const pct = Math.min(100, Math.max(0, Math.round(rawPercent)));
+    const rounded = Math.min(100, Math.max(0, Math.round(rawPercent)));
+    // Ao atingir o limiar, conta como concluída → 100% (igual ao servidor).
+    const pct = rounded >= COMPLETE_THRESHOLD ? 100 : rounded;
     setPercents((prev) =>
       pct > (prev[lessonId] ?? 0) ? { ...prev, [lessonId]: pct } : prev,
     );
@@ -162,6 +166,8 @@ export function CoursePlayer({
     } catch {
       /* offline: segue marcado localmente; tenta de novo depois */
     }
+    // Revalida os dados server (cabeçalho do curso e demais telas ao voltar).
+    router.refresh();
   }
 
   function goTo(delta: number) {
