@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Menu, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -63,18 +64,33 @@ export function AppTopbar({ onOpenMobileNav }: AppTopbarProps) {
 }
 
 function SearchInput() {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+
+  function onSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const term = query.trim();
+    router.push(term ? `/dashboard/busca?q=${encodeURIComponent(term)}` : "/dashboard/busca");
+  }
+
   return (
-    <div className="relative flex h-10 w-full items-center rounded-regular border border-border-subtle bg-background-subtle transition-colors focus-within:border-foreground-subtitle focus-within:bg-background-elevated">
+    <form
+      onSubmit={onSubmit}
+      role="search"
+      className="relative flex h-10 w-full items-center rounded-regular border border-border-subtle bg-background-subtle transition-colors focus-within:border-foreground-subtitle focus-within:bg-background-elevated"
+    >
       <Search
         aria-hidden
         className="ml-3 h-4 w-4 shrink-0 text-foreground-muted"
       />
       <input
         type="search"
-        placeholder="Buscar aplicações, cursos ou certificados..."
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Buscar aplicações ou cursos..."
         aria-label="Buscar"
         className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
       />
-    </div>
+    </form>
   );
 }
