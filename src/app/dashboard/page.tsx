@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   Award,
@@ -9,6 +10,7 @@ import {
   PlayCircle,
   type LucideIcon,
 } from "lucide-react";
+import { CourseStatCount } from "@/components/courses/CourseStatCount";
 import { readContent } from "@/lib/content/store.server";
 import { getCurrentStudent } from "@/lib/auth/student";
 import { cn } from "@/lib/utils";
@@ -34,8 +36,13 @@ type Feature = {
   href: string;
   icon: LucideIcon;
   accent: FeatureAccent;
-  stats: { label: string; value: number }[];
+  stats: { label: string; value: ReactNode }[];
 };
+
+/** Reduz cursos ao mínimo que a ilha client precisa para contar por status. */
+function courseStatuses(courses: AdminCourse[]) {
+  return courses.map((c) => ({ id: c.id, status: c.status }));
+}
 
 function buildFeatures(
   categories: AdminCategory[],
@@ -72,7 +79,7 @@ function buildFeatures(
         { label: "cursos", value: courses.length },
         {
           label: "concluídos",
-          value: courses.filter((course) => course.status === "completed").length,
+          value: <CourseStatCount courses={courseStatuses(courses)} match="completed" />,
         },
       ],
     },
@@ -107,9 +114,6 @@ export default async function DashboardPage() {
 
   const features = buildFeatures(categories, courses, certificates);
 
-  const completedCourses = courses.filter(
-    (course) => course.status === "completed",
-  ).length;
   const issuedCertificates = certificates.filter(
     (certificate) => certificate.status === "issued",
   ).length;
@@ -140,7 +144,11 @@ export default async function DashboardPage() {
         className="grid grid-cols-1 gap-3 sm:grid-cols-3"
       >
         <Metric icon={Layers} label="Trilhas em andamento" value={activeTracks} />
-        <Metric icon={CheckCircle2} label="Cursos concluídos" value={completedCourses} />
+        <Metric
+          icon={CheckCircle2}
+          label="Cursos concluídos"
+          value={<CourseStatCount courses={courseStatuses(courses)} match="completed" />}
+        />
         <Metric icon={Award} label="Certificados emitidos" value={issuedCertificates} />
       </section>
 
@@ -231,7 +239,7 @@ function Metric({
 }: {
   icon: LucideIcon;
   label: string;
-  value: number;
+  value: ReactNode;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-regular border border-border-subtle bg-background-elevated px-4 py-3 shadow-elevation-sm">

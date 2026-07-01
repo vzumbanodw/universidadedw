@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   Award,
@@ -8,8 +9,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CoursesBrowser } from "@/components/courses/CoursesBrowser";
+import { CourseStatCount } from "@/components/courses/CourseStatCount";
 import { readContent } from "@/lib/content/store.server";
 import { cn } from "@/lib/utils";
+import type { LearningPathStatus } from "@/types/learning";
 
 export const metadata: Metadata = {
   title: "Cursos · Universidade",
@@ -35,9 +38,11 @@ export default async function CursosPage() {
     { courses: 0, lessons: 0, inProgress: 0, completed: 0, certificates: 0 },
   );
 
+  const courseStatuses = published.map((c) => ({ id: c.id, status: c.status }));
+
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
-      <PageHeader summary={summary} />
+      <PageHeader summary={summary} courseStatuses={courseStatuses} />
 
       <CoursesBrowser courses={published} />
     </div>
@@ -52,7 +57,13 @@ type Summary = {
   certificates: number;
 };
 
-function PageHeader({ summary }: { summary: Summary }) {
+function PageHeader({
+  summary,
+  courseStatuses,
+}: {
+  summary: Summary;
+  courseStatuses: { id: string; status: LearningPathStatus }[];
+}) {
   return (
     <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
@@ -89,7 +100,7 @@ function PageHeader({ summary }: { summary: Summary }) {
         <SummaryTile
           icon={CheckCircle2}
           label="Concluídos"
-          value={summary.completed}
+          value={<CourseStatCount courses={courseStatuses} match="completed" />}
           accent="green"
         />
       </ul>
@@ -112,7 +123,7 @@ function SummaryTile({
 }: {
   icon: LucideIcon;
   label: string;
-  value: number;
+  value: ReactNode;
   muted?: boolean;
   accent?: keyof typeof TILE_ACCENTS;
 }) {

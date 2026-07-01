@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { CoursesSection } from "@/components/courses/CoursesSection";
+import { CoursesSectionLive } from "@/components/courses/CoursesSectionLive";
 import { Badge } from "@/components/ui/Badge";
 import { readContent } from "@/lib/content/store.server";
 import { slugify } from "@/lib/admin/options";
@@ -110,7 +110,7 @@ export default async function TrackCategoryDetailPage({ params }: PageProps) {
       </header>
 
       {courses.length > 0 ? (
-        <CoursesSection
+        <CoursesSectionLive
           eyebrow={typeLabel}
           title={`Cursos de ${category.name}`}
           description="Cursos publicados nesta aplicação."

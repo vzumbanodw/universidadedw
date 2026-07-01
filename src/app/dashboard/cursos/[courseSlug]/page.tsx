@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Award, BookOpen, Clock } from "lucide-react";
 import { CoursePlayer } from "@/components/courses/CoursePlayer";
+import { CourseHeaderProgress } from "@/components/courses/CourseHeaderProgress";
 import { Badge } from "@/components/ui/Badge";
-import { Progress } from "@/components/ui/Progress";
 import { readContent } from "@/lib/content/store.server";
 import { formatMinutes } from "@/lib/formatters";
 import type { AdminCourse, AdminLesson } from "@/types/admin";
@@ -143,13 +143,9 @@ export default async function CourseDetailPage({ params }: PageProps) {
                 {course.format}
               </Metric>
             </div>
-            <Progress
-              value={course.progress}
-              tone="primary"
-              size="xs"
-              className="mt-4"
-              label="Progresso"
-              showValue
+            <CourseHeaderProgress
+              courseId={course.id}
+              authoredProgress={course.progress}
             />
           </aside>
             </div>

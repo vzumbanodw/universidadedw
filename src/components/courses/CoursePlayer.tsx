@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +21,12 @@ import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/lib/formatters";
 import { getVideoEmbed } from "@/lib/video";
 import { YouTubePlayer } from "@/components/courses/YouTubePlayer";
+import {
+  useCourseSummary,
+  useLessonStatuses,
+  useProgressRecorder,
+} from "@/lib/progress/ProgressProvider";
+import type { LessonRuntimeStatus } from "@/lib/progress/progress-store";
 import type { Course, CourseLesson } from "@/types/courses";
 
 type CoursePlayerProps = {
@@ -35,22 +41,93 @@ const RESOURCE_ICON = {
 } as const;
 
 export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
+  const courseId = course.id;
+  const totalLessons = lessons.length;
+
+  const recorder = useProgressRecorder();
+  const lessonStatuses = useLessonStatuses(courseId);
+  const summary = useCourseSummary(courseId);
+
   const firstOpenLesson = useMemo(() => {
     const index = lessons.findIndex((lesson) => !lesson.completed);
     return index === -1 ? 0 : index;
   }, [lessons]);
 
   const [selectedIndex, setSelectedIndex] = useState(firstOpenLesson);
+  const hasNavigatedRef = useRef(false);
+  const autoResumedRef = useRef(false);
+
   const selectedLesson = lessons[selectedIndex] ?? lessons[0]!;
-  const completedCount = lessons.filter((lesson) => lesson.completed).length;
   const selectedNumber = selectedIndex + 1;
   const embed = getVideoEmbed(selectedLesson.videoUrl);
 
+  // Progresso real do aluno (runtime) tem prioridade sobre os valores autorados.
+  const completedCount = summary?.completedCount ?? 0;
+  const courseProgress =
+    summary && summary.status !== "not_started" ? summary.percent : course.progress;
+  const selectedStatus: LessonRuntimeStatus | "not_started" =
+    lessonStatuses[selectedLesson.id] ?? "not_started";
+
+  function select(index: number) {
+    hasNavigatedRef.current = true;
+    setSelectedIndex(index);
+  }
+
   function goTo(delta: number) {
+    hasNavigatedRef.current = true;
     setSelectedIndex((current) =>
       Math.max(0, Math.min(lessons.length - 1, current + delta)),
     );
   }
+
+  // Ao reabrir um curso já iniciado, retoma na primeira aula não concluída.
+  useEffect(() => {
+    if (autoResumedRef.current || hasNavigatedRef.current) return;
+    if (Object.keys(lessonStatuses).length === 0) return;
+    autoResumedRef.current = true;
+    const firstIncomplete = lessons.findIndex(
+      (lesson) => lessonStatuses[lesson.id] !== "completed",
+    );
+    if (firstIncomplete > 0) setSelectedIndex(firstIncomplete);
+  }, [lessonStatuses, lessons]);
+
+  // Registro de reprodução da aula selecionada (com throttle p/ não gravar 4x/s).
+  const lastPersistRef = useRef(0);
+  const doneRef = useRef(false);
+  useEffect(() => {
+    lastPersistRef.current = 0;
+    doneRef.current = lessonStatuses[selectedLesson.id] === "completed";
+    // Reinicia apenas ao trocar de aula; não observar lessonStatuses de propósito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLesson.id]);
+
+  function handlePlay() {
+    recorder.markStarted(courseId, selectedLesson.id, totalLessons);
+  }
+  function handleEnded() {
+    doneRef.current = true;
+    recorder.markCompleted(courseId, selectedLesson.id, totalLessons);
+  }
+  function handleProgress(seconds: number, duration: number) {
+    if (doneRef.current) return;
+    const ratio = duration > 0 ? seconds / duration : 0;
+    if (ratio >= 0.95) {
+      doneRef.current = true;
+      recorder.markCompleted(courseId, selectedLesson.id, totalLessons);
+      return;
+    }
+    if (seconds - lastPersistRef.current >= 5) {
+      lastPersistRef.current = seconds;
+      recorder.markPosition(courseId, selectedLesson.id, seconds, duration, totalLessons);
+    }
+  }
+
+  // Vimeo/iframe não expõe eventos de reprodução: marca "em andamento" ao abrir.
+  useEffect(() => {
+    if (embed?.kind === "iframe") {
+      recorder.markStarted(courseId, selectedLesson.id, totalLessons);
+    }
+  }, [embed?.kind, selectedLesson.id, courseId, totalLessons, recorder]);
 
   return (
     <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -64,6 +141,9 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                     key={embed.id}
                     id={embed.id}
                     title={selectedLesson.title}
+                    onPlay={handlePlay}
+                    onProgress={handleProgress}
+                    onEnded={handleEnded}
                   />
                 ) : embed.kind === "iframe" ? (
                   <iframe
@@ -79,6 +159,14 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                     key={embed.src}
                     src={embed.src}
                     controls
+                    onPlay={handlePlay}
+                    onTimeUpdate={(event) =>
+                      handleProgress(
+                        event.currentTarget.currentTime,
+                        event.currentTarget.duration,
+                      )
+                    }
+                    onEnded={handleEnded}
                     className="absolute inset-0 h-full w-full bg-black"
                   />
                 )}
@@ -88,9 +176,7 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                   <Badge variant="primary" size="sm">
                     Aula {selectedNumber}
                   </Badge>
-                  <Badge variant={selectedLesson.completed ? "success" : "orange"} size="sm" dot>
-                    {selectedLesson.completed ? "Concluída" : "Em andamento"}
-                  </Badge>
+                  <LessonStatusBadge status={selectedStatus} />
                   <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-foreground-muted">
                     <Clock className="h-3.5 w-3.5" aria-hidden />
                     {formatMinutes(selectedLesson.durationMinutes)}
@@ -125,9 +211,7 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                   <Badge variant="primary" size="sm">
                     Aula {selectedNumber}
                   </Badge>
-                  <Badge variant={selectedLesson.completed ? "success" : "orange"} size="sm" dot>
-                    {selectedLesson.completed ? "Concluída" : "Em andamento"}
-                  </Badge>
+                  <LessonStatusBadge status={selectedStatus} />
                 </div>
 
                 <div className="flex flex-col items-start gap-5 sm:max-w-[72%]">
@@ -263,22 +347,25 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
             </Badge>
           </div>
           <Progress
-            value={course.progress}
+            value={courseProgress}
             tone="primary"
             size="xs"
             className="mt-4"
-            label={`${course.progress}% do curso`}
+            label={`${courseProgress}% do curso`}
           />
         </div>
 
         <ol className="flex flex-col gap-2">
           {lessons.map((lesson, index) => {
             const active = index === selectedIndex;
+            const status = lessonStatuses[lesson.id];
+            const done = status === "completed";
+            const inProgress = status === "in_progress";
             return (
               <li key={lesson.id}>
                 <button
                   type="button"
-                  onClick={() => setSelectedIndex(index)}
+                  onClick={() => select(index)}
                   aria-current={active ? "step" : undefined}
                   className={cn(
                     "flex w-full items-start gap-3 rounded-regular border p-3 text-left transition-colors",
@@ -290,27 +377,32 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
                   <span
                     className={cn(
                       "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
-                      lesson.completed
+                      done
                         ? "bg-background-success text-foreground-success"
                         : active
                           ? "bg-brand-primary text-white"
-                          : "bg-background-subtle text-foreground-muted",
+                          : inProgress
+                            ? "bg-brand-orange/20 text-[#B97A0F]"
+                            : "bg-background-subtle text-foreground-muted",
                     )}
                     aria-hidden
                   >
-                    {lesson.completed ? (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    ) : (
-                      index + 1
-                    )}
+                    {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="line-clamp-2 text-[13px] font-medium leading-snug text-foreground-heading">
                       {lesson.title}
                     </span>
-                    <span className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-foreground-muted">
-                      <Clock className="h-3 w-3" aria-hidden />
-                      {formatMinutes(lesson.durationMinutes)}
+                    <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-foreground-muted">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" aria-hidden />
+                        {formatMinutes(lesson.durationMinutes)}
+                      </span>
+                      {inProgress ? (
+                        <span className="font-medium text-[#B97A0F]">
+                          · Em andamento
+                        </span>
+                      ) : null}
                     </span>
                   </span>
                 </button>
@@ -320,6 +412,26 @@ export function CoursePlayer({ course, lessons }: CoursePlayerProps) {
         </ol>
       </aside>
     </section>
+  );
+}
+
+const LESSON_STATUS_META = {
+  completed: { variant: "success", label: "Concluída" },
+  in_progress: { variant: "orange", label: "Em andamento" },
+  not_started: { variant: "neutral", label: "Não iniciada" },
+} as const;
+
+/** Selo de status da aula selecionada, dirigido pelo progresso real do aluno. */
+function LessonStatusBadge({
+  status,
+}: {
+  status: LessonRuntimeStatus | "not_started";
+}) {
+  const meta = LESSON_STATUS_META[status];
+  return (
+    <Badge variant={meta.variant} size="sm" dot>
+      {meta.label}
+    </Badge>
   );
 }
 

@@ -18,5 +18,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       }
     : null;
 
-  return <DashboardShell user={user}>{children}</DashboardShell>;
+  return (
+    <DashboardShell user={user} studentId={student?.id ?? "guest"}>
+      {children}
+    </DashboardShell>
+  );
 }

@@ -19,16 +19,20 @@ type YTPlayer = {
   getCurrentTime: () => number;
   getDuration: () => number;
   destroy: () => void;
+  // Qualidade (best-effort — o YouTube pode ignorar; APIs legadas).
+  setPlaybackQuality?: (quality: string) => void;
+  getAvailableQualityLevels?: () => string[];
 };
 
 type YTPlayerOptions = {
   videoId: string;
   width?: string;
   height?: string;
-  playerVars?: Record<string, number>;
+  playerVars?: Record<string, number | string>;
   events?: {
-    onReady?: () => void;
-    onStateChange?: (event: { data: number }) => void;
+    onReady?: (event: { target: YTPlayer }) => void;
+    onStateChange?: (event: { data: number; target: YTPlayer }) => void;
+    onPlaybackQualityChange?: (event: { target: YTPlayer }) => void;
   };
 };
 
@@ -72,6 +76,22 @@ function loadYouTubeApi(): Promise<YTNamespace> {
   return apiPromise;
 }
 
+/**
+ * Força a maior qualidade disponível. É best-effort: as APIs de qualidade do
+ * YouTube são legadas e o player pode reajustar sozinho conforme banda/tamanho.
+ * O maior ganho real vem de renderizar o player grande (o que já fazemos).
+ */
+function forceHighestQuality(player: YTPlayer): void {
+  try {
+    const levels = player.getAvailableQualityLevels?.() ?? [];
+    // A lista vem da maior para a menor; "auto" deixa o YouTube decidir.
+    const best = levels.find((level) => level !== "auto");
+    player.setPlaybackQuality?.(best ?? "hd1080");
+  } catch {
+    // ignora — API de qualidade indisponível/ignorada
+  }
+}
+
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const total = Math.floor(seconds);
@@ -90,7 +110,22 @@ function getFullscreenElement(): Element | null {
   );
 }
 
-export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
+export function YouTubePlayer({
+  id,
+  title,
+  onPlay,
+  onProgress,
+  onEnded,
+}: {
+  id: string;
+  title?: string;
+  /** Disparado quando o vídeo começa a tocar. */
+  onPlay?: () => void;
+  /** Posição/duração atuais (segundos), ~4x por segundo. */
+  onProgress?: (seconds: number, duration: number) => void;
+  /** Disparado quando o vídeo termina. */
+  onEnded?: () => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
@@ -98,6 +133,14 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+
+  // Callbacks em refs: sempre a versão mais recente, sem re-assinar os efeitos.
+  const onPlayRef = useRef(onPlay);
+  const onProgressRef = useRef(onProgress);
+  const onEndedRef = useRef(onEnded);
+  onPlayRef.current = onPlay;
+  onProgressRef.current = onProgress;
+  onEndedRef.current = onEnded;
 
   useEffect(() => {
     let cancelled = false;
@@ -121,10 +164,22 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
           disablekb: 1,
           iv_load_policy: 3,
           playsinline: 1,
+          // Sugere HD (legado; best-effort). O reforço real é via API no onReady.
+          vq: "hd1080",
         },
         events: {
+          onReady: (event) => {
+            if (!cancelled) forceHighestQuality(event.target);
+          },
           onStateChange: (event) => {
-            if (!cancelled) setPlaying(event.data === YT.PlayerState.PLAYING);
+            if (cancelled) return;
+            const isPlaying = event.data === YT.PlayerState.PLAYING;
+            setPlaying(isPlaying);
+            if (isPlaying) {
+              onPlayRef.current?.();
+              forceHighestQuality(event.target);
+            }
+            if (event.data === YT.PlayerState.ENDED) onEndedRef.current?.();
           },
         },
       });
@@ -152,6 +207,9 @@ export function YouTubePlayer({ id, title }: { id: string; title?: string }) {
         const c = player.getCurrentTime();
         if (Number.isFinite(d) && d > 0) setDuration(d);
         if (Number.isFinite(c)) setCurrent(c);
+        if (Number.isFinite(c) && Number.isFinite(d) && d > 0) {
+          onProgressRef.current?.(c, d);
+        }
       } catch {
         // métodos ainda indisponíveis
       }

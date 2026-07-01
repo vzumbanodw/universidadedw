@@ -12,6 +12,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CourseCard } from "./CourseCard";
+import {
+  useContinueCourse,
+  useCoursesWithProgress,
+} from "@/lib/progress/ProgressProvider";
 import { cn } from "@/lib/utils";
 import type { Course } from "@/types/courses";
 
@@ -20,7 +24,7 @@ type StatusFilter = "all" | "in_progress" | "certificate";
 /**
  * Tela de cursos do aluno: dois atalhos funcionais ("Continuar de onde parou" e
  * "Começar por uma aplicação"), busca e filtros operando no cliente sobre os
- * cursos publicados.
+ * cursos publicados. Status/progresso refletem o progresso real do aluno.
  */
 export function CoursesBrowser({ courses }: { courses: Course[] }) {
   const [query, setQuery] = useState("");
@@ -29,29 +33,27 @@ export function CoursesBrowser({ courses }: { courses: Course[] }) {
 
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Curso a retomar: o em andamento mais avançado; senão, o primeiro disponível.
-  const continueCourse = useMemo(() => {
-    const inProgress = courses
-      .filter((course) => course.status === "in_progress")
-      .sort((a, b) => b.progress - a.progress);
-    return inProgress[0] ?? courses[0];
-  }, [courses]);
+  // Sobrepõe o progresso real do aluno sobre os cursos autorados.
+  const liveCourses = useCoursesWithProgress(courses);
+
+  // Curso a retomar: prioriza o progresso real; senão, autorado.
+  const continueCourse = useContinueCourse(courses);
 
   // Aplicações disponíveis (categorias do tipo "aplicacao") com cursos.
   const applications = useMemo(
     () => [
       ...new Set(
-        courses
+        liveCourses
           .filter((course) => course.categoryType === "aplicacao")
           .map((course) => course.categoryName),
       ),
     ].sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [courses],
+    [liveCourses],
   );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return courses.filter((course) => {
+    return liveCourses.filter((course) => {
       if (status === "in_progress" && course.status !== "in_progress") return false;
       if (status === "certificate" && !course.certificate) return false;
       if (app !== "all" && course.categoryName !== app) return false;
@@ -62,7 +64,7 @@ export function CoursesBrowser({ courses }: { courses: Course[] }) {
       }
       return true;
     });
-  }, [courses, query, status, app]);
+  }, [liveCourses, query, status, app]);
 
   function pickApplication(value: string) {
     // `value` é "all" (remove o filtro) ou o nome de uma aplicação.

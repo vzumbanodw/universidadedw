@@ -8,18 +8,22 @@ import {
   CurrentUserProvider,
   type CurrentUserView,
 } from "@/components/auth/CurrentUserProvider";
+import { ProgressProvider } from "@/lib/progress/ProgressProvider";
 
 export function DashboardShell({
   children,
   user = null,
+  studentId = "guest",
 }: {
   children: ReactNode;
   user?: CurrentUserView | null;
+  studentId?: string;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <CurrentUserProvider value={user}>
+    <ProgressProvider studentId={studentId}>
     <div className="min-h-screen bg-background-subtle text-foreground">
       <div className="flex min-h-screen">
         {/* Desktop sidebar */}
@@ -49,6 +53,7 @@ export function DashboardShell({
         onClose={() => setMobileNavOpen(false)}
       />
     </div>
+    </ProgressProvider>
     </CurrentUserProvider>
   );
 }
