@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Award,
   BookOpen,
+  CheckCircle2,
   Clock,
   PlayCircle,
   Sparkles,
@@ -104,7 +105,8 @@ const FORMAT_ICON: Record<CourseFormat, LucideIcon> = {
 export function CourseCard({ course }: { course: Course }) {
   const accent = ACCENTS[course.accent];
   const FormatIcon = FORMAT_ICON[course.format];
-  const showProgress = course.status === "in_progress";
+  const isCompleted = course.status === "completed";
+  const showProgress = course.status === "in_progress" || isCompleted;
 
   return (
     <Link
@@ -186,7 +188,12 @@ export function CourseCard({ course }: { course: Course }) {
         {showProgress ? (
           <div className="mt-1">
             <div className="mb-1 flex items-center justify-between text-[11px] text-white/80">
-              <span>Em andamento</span>
+              <span className="inline-flex items-center gap-1">
+                {isCompleted ? (
+                  <CheckCircle2 className="h-3 w-3" aria-hidden />
+                ) : null}
+                {isCompleted ? "Concluído" : "Em andamento"}
+              </span>
               <span className="font-semibold tabular-nums">{course.progress}%</span>
             </div>
             <div
@@ -197,7 +204,10 @@ export function CourseCard({ course }: { course: Course }) {
               className="h-1.5 w-full overflow-hidden rounded-full bg-white/25"
             >
               <div
-                className="h-full rounded-full bg-brand-primary"
+                className={cn(
+                  "h-full rounded-full",
+                  isCompleted ? "bg-brand-green" : "bg-brand-primary",
+                )}
                 style={{ width: `${course.progress}%` }}
               />
             </div>

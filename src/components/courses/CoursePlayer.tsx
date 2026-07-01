@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -55,6 +56,7 @@ export function CoursePlayer({
     Object.fromEntries(initialProgress.map((p) => [p.lessonId, p.percent])),
   );
   const [flashDone, setFlashDone] = useState(false);
+  const [flashCourse, setFlashCourse] = useState(false);
 
   const isDone = (lessonId: string) => (percents[lessonId] ?? 0) >= COMPLETE_THRESHOLD;
 
@@ -82,6 +84,9 @@ export function CoursePlayer({
             videoLessonList.length,
         )
       : 0;
+  const courseCompleted =
+    videoLessonList.length > 0 && completedCount === videoLessonList.length;
+  const courseSlug = course.href.split("/").filter(Boolean).at(-1) ?? "";
 
   const selectedNumber = selectedIndex + 1;
   const embed = getVideoEmbed(selectedLesson.videoUrl);
@@ -138,8 +143,16 @@ export function CoursePlayer({
     if (isDone(lessonId)) return;
     setPercents((prev) => ({ ...prev, [lessonId]: 100 }));
     clearVideoPosition(studentId, courseId, lessonId);
+    // Esta conclusão finaliza o curso? (todas as aulas-vídeo ficam concluídas)
+    const finishesCourse =
+      videoLessonList.length > 0 &&
+      videoLessonList.every((l) => l.id === lessonId || isDone(l.id));
     setFlashDone(true);
-    window.setTimeout(() => setFlashDone(false), 4000);
+    setFlashCourse(finishesCourse);
+    window.setTimeout(() => {
+      setFlashDone(false);
+      setFlashCourse(false);
+    }, 4000);
     try {
       await fetch("/api/progress/complete", {
         method: "POST",
@@ -214,7 +227,7 @@ export function CoursePlayer({
                   <div className="pointer-events-none absolute left-1/2 top-4 z-30 -translate-x-1/2 animate-fade-in-up">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-green/95 px-3 py-1.5 text-[12.5px] font-semibold text-white shadow-elevation-lg">
                       <CheckCircle2 className="h-4 w-4" aria-hidden />
-                      Aula concluída
+                      {flashCourse ? "Curso concluído! 🎉" : "Aula concluída"}
                     </span>
                   </div>
                 ) : null}
@@ -391,20 +404,37 @@ export function CoursePlayer({
                 Aulas do curso
               </h2>
               <p className="mt-1 text-[12.5px] text-foreground-muted">
-                {completedCount} de {lessons.length} concluídas
+                {completedCount} de {videoLessonList.length} concluídas
               </p>
             </div>
-            <Badge variant="neutral" size="sm">
-              {course.level}
+            <Badge variant={courseCompleted ? "success" : "neutral"} size="sm" dot={courseCompleted}>
+              {courseCompleted ? "Concluído" : course.level}
             </Badge>
           </div>
-          <Progress
-            value={livePct}
-            tone="primary"
-            size="xs"
-            className="mt-4"
-            label={`${livePct}% do curso`}
-          />
+
+          {courseCompleted ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-regular border border-brand-green/30 bg-brand-green/10 px-3 py-2.5 text-[13px] font-semibold text-[#5C8A1F]">
+              <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+              Curso concluído
+              {course.certificate ? (
+                <Link
+                  href={`/dashboard/certificados/${courseSlug}`}
+                  className="ml-auto inline-flex items-center gap-1 rounded-regular bg-button-primary px-2.5 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-brand-dark"
+                >
+                  <Award className="h-3.5 w-3.5" aria-hidden />
+                  Ver certificado
+                </Link>
+              ) : null}
+            </div>
+          ) : (
+            <Progress
+              value={livePct}
+              tone="primary"
+              size="xs"
+              className="mt-4"
+              label={`${livePct}% do curso`}
+            />
+          )}
         </div>
 
         <ol className="flex flex-col gap-2">

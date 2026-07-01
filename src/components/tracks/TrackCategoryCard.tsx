@@ -4,6 +4,7 @@ import {
   BarChart3,
   Beaker,
   Building2,
+  CheckCircle2,
   ClipboardList,
   CreditCard,
   Factory,
@@ -17,6 +18,7 @@ import { Progress } from "@/components/ui/Progress";
 import { slugify } from "@/lib/admin/options";
 import { cn } from "@/lib/utils";
 import type { TrackCategory, TrackCategoryAccent, TrackCategoryIcon } from "@/types/tracks";
+import type { LearningPathStatus } from "@/types/learning";
 
 const ICONS: Record<TrackCategoryIcon, LucideIcon> = {
   chart: BarChart3,
@@ -59,10 +61,15 @@ export function trackCategorySlug(category: { name: string }): string {
  * Card de aplicação (1ª camada): compacto e elegante, sem capa. A imagem de
  * capa aparece no cabeçalho da aplicação ao entrar nela.
  */
-export function TrackCategoryCard({ category }: { category: TrackCategory }) {
+export function TrackCategoryCard({
+  category,
+}: {
+  category: TrackCategory & { status?: LearningPathStatus };
+}) {
   const Icon = ICONS[category.iconKey];
   const accent = ACCENTS[category.accent];
   const href = `/dashboard/aplicacoes/${trackCategorySlug(category)}`;
+  const completed = category.status === "completed" || category.progressPct >= 100;
 
   return (
     <Link
@@ -93,10 +100,17 @@ export function TrackCategoryCard({ category }: { category: TrackCategory }) {
             {category.tagline}
           </p>
         </div>
-        <ArrowUpRight
-          className="h-4 w-4 shrink-0 text-foreground-muted opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-x-0.5 group-hover:opacity-100"
-          aria-hidden
-        />
+        {completed ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-green/15 px-2 py-0.5 text-[11px] font-semibold text-[#5C8A1F]">
+            <CheckCircle2 className="h-3 w-3" aria-hidden />
+            Concluída
+          </span>
+        ) : (
+          <ArrowUpRight
+            className="h-4 w-4 shrink-0 text-foreground-muted opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-x-0.5 group-hover:opacity-100"
+            aria-hidden
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-3 text-[12px] text-foreground-subtitle">
@@ -109,14 +123,28 @@ export function TrackCategoryCard({ category }: { category: TrackCategory }) {
 
       <div>
         <div className="mb-1.5 flex items-baseline justify-between text-[11.5px]">
-          <span className="font-medium uppercase tracking-[0.12em] text-foreground-muted">
-            Seu progresso
+          <span
+            className={cn(
+              "font-medium uppercase tracking-[0.12em]",
+              completed ? "text-[#5C8A1F]" : "text-foreground-muted",
+            )}
+          >
+            {completed ? "Concluída" : "Seu progresso"}
           </span>
-          <span className="font-semibold tabular-nums text-foreground">
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              completed ? "text-[#5C8A1F]" : "text-foreground",
+            )}
+          >
             {category.progressPct}%
           </span>
         </div>
-        <Progress value={category.progressPct} tone={accent.bar} size="xs" />
+        <Progress
+          value={category.progressPct}
+          tone={completed ? "green" : accent.bar}
+          size="xs"
+        />
       </div>
     </Link>
   );
