@@ -13,7 +13,12 @@ import { Progress } from "@/components/ui/Progress";
 import { readContent } from "@/lib/content/store.server";
 import { getStudentProgress } from "@/lib/content/progress.server";
 import { getCurrentStudent } from "@/lib/auth/student";
-import { courseCompletion, videoLessons } from "@/lib/student-progress";
+import {
+  applicationProgress,
+  courseCompletion,
+  videoLessons,
+} from "@/lib/student-progress";
+import { slugify } from "@/lib/admin/options";
 import { formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
@@ -52,8 +57,42 @@ export default async function CertificadosPage() {
     return { course, cc, earned, earnedAt, slug: slugOf(course.href, course.id) };
   });
 
-  const earned = items.filter((i) => i.earned).length;
-  const started = items.filter((i) => !i.earned && i.cc.done > 0).length;
+  // Certificados de APLICAÇÃO: liberados quando TODOS os cursos da aplicação
+  // são concluídos.
+  const appItems = content.categories
+    .filter((c) => c.published)
+    .map((category) => {
+      const ap = applicationProgress(
+        category.id,
+        content.courses,
+        content.lessons,
+        progress,
+      );
+      const won = ap.status === "completed" && ap.courseCount > 0;
+      let earnedAt: string | undefined;
+      if (won) {
+        const appCourseIds = new Set(
+          content.courses
+            .filter((c) => c.published && c.categoryId === category.id)
+            .map((c) => c.id),
+        );
+        const dates = content.lessons
+          .filter((l) => l.published && l.videoUrl && appCourseIds.has(l.courseId))
+          .map((l) => dateByLesson.get(l.id))
+          .filter((d): d is string => Boolean(d))
+          .sort();
+        earnedAt = dates.at(-1);
+      }
+      return { category, ap, earned: won, earnedAt, slug: slugify(category.name) };
+    })
+    .filter((a) => a.ap.courseCount > 0);
+
+  const totalItems = appItems.length + items.length;
+  const earned =
+    appItems.filter((a) => a.earned).length + items.filter((i) => i.earned).length;
+  const started =
+    appItems.filter((a) => !a.earned && a.ap.pct > 0).length +
+    items.filter((i) => !i.earned && i.cc.done > 0).length;
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-8">
@@ -74,40 +113,70 @@ export default async function CertificadosPage() {
           </h1>
           <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-foreground-subtitle">
             Conclua <strong className="font-semibold text-foreground">todos os
-            vídeos</strong> de um curso com certificado para liberar o seu para
-            download.
+            cursos</strong> de uma aplicação — ou todos os vídeos de um curso com
+            certificado — para liberar o seu certificado.
           </p>
         </div>
 
         <ul className="grid grid-cols-3 gap-2.5 lg:w-auto lg:shrink-0">
-          <SummaryTile icon={Award} label="Disponíveis" value={items.length} />
+          <SummaryTile icon={Award} label="Disponíveis" value={totalItems} />
           <SummaryTile icon={CheckCircle2} label="Liberados" value={earned} accent="green" />
           <SummaryTile icon={Clock} label="Em andamento" value={started} accent="teal" />
         </ul>
       </header>
 
-      {items.length === 0 ? (
+      {totalItems === 0 ? (
         <div className="rounded-medium border border-dashed border-border-default bg-background-elevated px-6 py-16 text-center">
           <Award className="mx-auto h-8 w-8 text-foreground-muted" aria-hidden />
           <p className="mt-3 text-[14px] text-foreground-muted">
-            Nenhum curso com certificado por enquanto. Quando um curso com
-            certificado for publicado, ele aparece aqui.
+            Nenhum certificado por enquanto. Conclua cursos e aplicações para
+            liberar os seus certificados.
           </p>
         </div>
       ) : (
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {items.map((item) => (
-            <CertificateCard
-              key={item.course.id}
-              title={item.course.title}
-              category={item.course.categoryName}
-              earned={item.earned}
-              pct={item.cc.pct}
-              earnedAt={item.earnedAt}
-              href={`/dashboard/certificados/${item.slug}`}
-            />
-          ))}
-        </section>
+        <div className="flex flex-col gap-8">
+          {appItems.length > 0 ? (
+            <section className="flex flex-col gap-4">
+              <h2 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">
+                Certificados de aplicação
+              </h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {appItems.map((item) => (
+                  <CertificateCard
+                    key={item.category.id}
+                    title={item.category.name}
+                    category="Aplicação"
+                    earned={item.earned}
+                    pct={item.ap.pct}
+                    earnedAt={item.earnedAt}
+                    href={`/dashboard/certificados/aplicacao/${item.slug}`}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {items.length > 0 ? (
+            <section className="flex flex-col gap-4">
+              <h2 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">
+                Certificados de curso
+              </h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {items.map((item) => (
+                  <CertificateCard
+                    key={item.course.id}
+                    title={item.course.title}
+                    category={item.course.categoryName}
+                    earned={item.earned}
+                    pct={item.cc.pct}
+                    earnedAt={item.earnedAt}
+                    href={`/dashboard/certificados/${item.slug}`}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
       )}
     </div>
   );

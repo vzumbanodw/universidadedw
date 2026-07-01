@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Award, CheckCircle2 } from "lucide-react";
 import { CoursesSection } from "@/components/courses/CoursesSection";
 import { Badge } from "@/components/ui/Badge";
 import { readContent } from "@/lib/content/store.server";
 import { getStudentProgress } from "@/lib/content/progress.server";
 import { getCurrentStudent } from "@/lib/auth/student";
-import { courseWithRealProgress } from "@/lib/student-progress";
+import {
+  applicationProgress,
+  courseWithRealProgress,
+} from "@/lib/student-progress";
 import { slugify } from "@/lib/admin/options";
 import type { AdminCategory } from "@/types/admin";
 
@@ -57,6 +60,15 @@ export default async function TrackCategoryDetailPage({ params }: PageProps) {
   const courses = content.courses
     .filter((course) => course.published && course.categoryId === category.id)
     .map((c) => courseWithRealProgress(c, content.lessons, progress));
+
+  const appProgress = applicationProgress(
+    category.id,
+    content.courses,
+    content.lessons,
+    progress,
+  );
+  const certificateReady =
+    appProgress.status === "completed" && appProgress.courseCount > 0;
 
   const typeLabel = "Aplicação";
 
@@ -115,6 +127,30 @@ export default async function TrackCategoryDetailPage({ params }: PageProps) {
           </div>
         </div>
       </header>
+
+      {certificateReady ? (
+        <Link
+          href={`/dashboard/certificados/aplicacao/${categorySlug}`}
+          className="group flex flex-wrap items-center gap-3 rounded-medium border border-brand-green/30 bg-brand-green/10 px-5 py-4 transition-colors hover:border-brand-green/50"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-regular bg-brand-green/20 text-[#5C8A1F]">
+            <Award className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5 text-[14px] font-semibold text-foreground-heading">
+              <CheckCircle2 className="h-4 w-4 text-[#5C8A1F]" aria-hidden />
+              Aplicação concluída — certificado disponível
+            </span>
+            <span className="mt-0.5 block text-[12.5px] text-foreground-muted">
+              Você concluiu todos os cursos de {category.name}. Emita o seu
+              certificado.
+            </span>
+          </span>
+          <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-regular bg-button-primary px-3.5 text-[13px] font-semibold text-white transition-colors group-hover:bg-brand-dark">
+            Ver certificado
+          </span>
+        </Link>
+      ) : null}
 
       {courses.length > 0 ? (
         <CoursesSection
