@@ -5,6 +5,9 @@ import { ArrowLeft } from "lucide-react";
 import { CoursesSection } from "@/components/courses/CoursesSection";
 import { Badge } from "@/components/ui/Badge";
 import { readContent } from "@/lib/content/store.server";
+import { getStudentProgress } from "@/lib/content/progress.server";
+import { getCurrentStudent } from "@/lib/auth/student";
+import { courseWithRealProgress } from "@/lib/student-progress";
 import { slugify } from "@/lib/admin/options";
 import type { AdminCategory } from "@/types/admin";
 
@@ -47,9 +50,13 @@ export default async function TrackCategoryDetailPage({ params }: PageProps) {
 
   if (!category) notFound();
 
-  const courses = content.courses.filter(
-    (course) => course.published && course.categoryId === category.id,
-  );
+  // Progresso REAL do aluno → cursos com status/% de conclusão corretos.
+  const student = await getCurrentStudent();
+  const rows = await getStudentProgress(student?.id);
+  const progress = new Map(rows.map((r) => [r.lessonId, r.percent]));
+  const courses = content.courses
+    .filter((course) => course.published && course.categoryId === category.id)
+    .map((c) => courseWithRealProgress(c, content.lessons, progress));
 
   const typeLabel = "Aplicação";
 
