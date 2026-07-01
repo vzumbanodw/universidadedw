@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +21,11 @@ import { cn } from "@/lib/utils";
 import { formatMinutes } from "@/lib/formatters";
 import { getVideoEmbed } from "@/lib/video";
 import { YouTubePlayer } from "@/components/courses/YouTubePlayer";
+import {
+  clearVideoPosition,
+  getVideoPosition,
+  saveVideoPosition,
+} from "@/lib/video-position";
 import type { Course, CourseLesson } from "@/types/courses";
 
 type CoursePlayerProps = {
@@ -28,6 +33,8 @@ type CoursePlayerProps = {
   lessons: CourseLesson[];
   /** Ids das aulas já concluídas por este aluno (progresso real). */
   initialCompletedIds?: string[];
+  /** Aluno logado — usado para namespaced da posição salva (retomar). */
+  studentId?: string;
 };
 
 const RESOURCE_ICON = {
@@ -40,6 +47,7 @@ export function CoursePlayer({
   course,
   lessons,
   initialCompletedIds = [],
+  studentId,
 }: CoursePlayerProps) {
   const [completedIds, setCompletedIds] = useState<Set<string>>(
     () => new Set(initialCompletedIds),
@@ -63,10 +71,34 @@ export function CoursePlayer({
   const livePct = videoCount > 0 ? Math.round((doneVideoCount / videoCount) * 100) : 0;
   const selectedNumber = selectedIndex + 1;
   const embed = getVideoEmbed(selectedLesson.videoUrl);
+  const courseId = course.id;
+
+  // Retomar de onde parou: posição salva localmente por aluno (só conveniência
+  // de reprodução; a conclusão oficial continua no servidor via markComplete).
+  const [resumeSeconds, setResumeSeconds] = useState(0);
+  useEffect(() => {
+    setResumeSeconds(getVideoPosition(studentId, courseId, selectedLesson.id));
+  }, [studentId, courseId, selectedLesson.id]);
+
+  const lastSaveRef = useRef(0);
+  useEffect(() => {
+    lastSaveRef.current = 0;
+  }, [selectedLesson.id]);
+
+  function handleProgress(seconds: number) {
+    if (seconds - lastSaveRef.current >= 5) {
+      lastSaveRef.current = seconds;
+      saveVideoPosition(studentId, courseId, selectedLesson.id, seconds);
+    }
+  }
+  function handlePause(seconds: number) {
+    saveVideoPosition(studentId, courseId, selectedLesson.id, seconds);
+  }
 
   async function markComplete(lessonId: string) {
     if (completedIds.has(lessonId)) return;
     setCompletedIds((prev) => new Set(prev).add(lessonId));
+    clearVideoPosition(studentId, courseId, lessonId);
     setFlashDone(true);
     window.setTimeout(() => setFlashDone(false), 4000);
     try {
@@ -98,6 +130,9 @@ export function CoursePlayer({
                     key={embed.id}
                     id={embed.id}
                     title={selectedLesson.title}
+                    startSeconds={resumeSeconds}
+                    onProgress={handleProgress}
+                    onPause={handlePause}
                     onEnded={() => markComplete(selectedLesson.id)}
                   />
                 ) : embed.kind === "iframe" ? (
@@ -114,6 +149,17 @@ export function CoursePlayer({
                     key={embed.src}
                     src={embed.src}
                     controls
+                    onLoadedMetadata={(event) => {
+                      if (resumeSeconds > 1) {
+                        event.currentTarget.currentTime = resumeSeconds;
+                      }
+                    }}
+                    onTimeUpdate={(event) =>
+                      handleProgress(event.currentTarget.currentTime)
+                    }
+                    onPause={(event) =>
+                      handlePause(event.currentTarget.currentTime)
+                    }
                     onEnded={() => markComplete(selectedLesson.id)}
                     className="absolute inset-0 h-full w-full bg-black"
                   />

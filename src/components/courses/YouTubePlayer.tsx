@@ -19,16 +19,20 @@ type YTPlayer = {
   getCurrentTime: () => number;
   getDuration: () => number;
   destroy: () => void;
+  // Qualidade (best-effort — APIs legadas; o YouTube pode ignorar).
+  setPlaybackQuality?: (quality: string) => void;
+  getAvailableQualityLevels?: () => string[];
 };
 
 type YTPlayerOptions = {
   videoId: string;
   width?: string;
   height?: string;
-  playerVars?: Record<string, number>;
+  playerVars?: Record<string, number | string>;
   events?: {
-    onReady?: () => void;
-    onStateChange?: (event: { data: number }) => void;
+    onReady?: (event: { target: YTPlayer }) => void;
+    onStateChange?: (event: { data: number; target: YTPlayer }) => void;
+    onPlaybackQualityChange?: (event: { target: YTPlayer }) => void;
   };
 };
 
@@ -72,6 +76,22 @@ function loadYouTubeApi(): Promise<YTNamespace> {
   return apiPromise;
 }
 
+/**
+ * Força a maior qualidade disponível. Best-effort: as APIs de qualidade do
+ * YouTube são legadas e o player pode reajustar sozinho por banda/tamanho — o
+ * maior ganho real vem de renderizar o player grande (fazemos isso via 1080p +
+ * tela cheia).
+ */
+function forceHighestQuality(player: YTPlayer): void {
+  try {
+    const levels = player.getAvailableQualityLevels?.() ?? [];
+    const best = levels.find((level) => level !== "auto");
+    player.setPlaybackQuality?.(best ?? "hd1080");
+  } catch {
+    // ignora — API indisponível/ignorada
+  }
+}
+
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const total = Math.floor(seconds);
@@ -84,20 +104,35 @@ export function YouTubePlayer({
   id,
   title,
   onEnded,
+  onProgress,
+  onPause,
+  startSeconds,
 }: {
   id: string;
   title?: string;
   onEnded?: () => void;
+  /** Posição/duração atuais (segundos), ~4x por segundo. */
+  onProgress?: (seconds: number, duration: number) => void;
+  /** Disparado ao pausar (bom momento para salvar a posição). */
+  onPause?: (seconds: number, duration: number) => void;
+  /** Posição inicial (segundos) para retomar de onde parou. */
+  startSeconds?: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const onEndedRef = useRef(onEnded);
+  const onProgressRef = useRef(onProgress);
+  const onPauseRef = useRef(onPause);
   onEndedRef.current = onEnded;
+  onProgressRef.current = onProgress;
+  onPauseRef.current = onPause;
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [ready, setReady] = useState(false);
+  const resumedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,8 +146,10 @@ export function YouTubePlayer({
 
       playerRef.current = new YT.Player(mount, {
         videoId: id,
-        width: "100%",
-        height: "100%",
+        // Dimensões grandes no iframe: o YouTube escolhe a qualidade pelo tamanho
+        // do player, então pedimos 1080p. O CSS faz o iframe preencher o espaço.
+        width: "1920",
+        height: "1080",
         playerVars: {
           controls: 0,
           modestbranding: 1,
@@ -121,11 +158,32 @@ export function YouTubePlayer({
           disablekb: 1,
           iv_load_policy: 3,
           playsinline: 1,
+          vq: "hd1080",
         },
         events: {
+          onReady: (event) => {
+            if (cancelled) return;
+            forceHighestQuality(event.target);
+            setReady(true);
+          },
+          onPlaybackQualityChange: (event) => {
+            if (!cancelled) forceHighestQuality(event.target);
+          },
           onStateChange: (event) => {
             if (cancelled) return;
-            setPlaying(event.data === YT.PlayerState.PLAYING);
+            const isPlaying = event.data === YT.PlayerState.PLAYING;
+            setPlaying(isPlaying);
+            if (isPlaying) forceHighestQuality(event.target);
+            if (event.data === YT.PlayerState.PAUSED) {
+              try {
+                onPauseRef.current?.(
+                  event.target.getCurrentTime(),
+                  event.target.getDuration(),
+                );
+              } catch {
+                // métodos ainda indisponíveis
+              }
+            }
             if (event.data === YT.PlayerState.ENDED) onEndedRef.current?.();
           },
         },
@@ -163,12 +221,31 @@ export function YouTubePlayer({
         const c = player.getCurrentTime();
         if (Number.isFinite(d) && d > 0) setDuration(d);
         if (Number.isFinite(c)) setCurrent(c);
+        if (Number.isFinite(c) && Number.isFinite(d) && d > 0) {
+          onProgressRef.current?.(c, d);
+        }
       } catch {
         // métodos ainda indisponíveis
       }
     }, 250);
     return () => clearInterval(interval);
   }, []);
+
+  // Retoma de onde parou. Roda quando o player fica pronto e/ou quando a posição
+  // salva chega (pode chegar após a montagem, vinda do localStorage).
+  useEffect(() => {
+    if (!ready || resumedRef.current) return;
+    const seconds = startSeconds ?? 0;
+    if (seconds > 1) {
+      try {
+        playerRef.current?.seekTo(seconds, true);
+        setCurrent(seconds);
+      } catch {
+        // player ainda não aceita seek
+      }
+      resumedRef.current = true;
+    }
+  }, [ready, startSeconds]);
 
   function toggle() {
     const player = playerRef.current;
@@ -211,8 +288,12 @@ export function YouTubePlayer({
 
   return (
     <div ref={rootRef} className="absolute inset-0 bg-black">
-      {/* iframe do YouTube — sem eventos de ponteiro (interação só pela camada) */}
-      <div ref={hostRef} className="pointer-events-none h-full w-full" />
+      {/* iframe do YouTube — sem eventos de ponteiro (interação só pela camada).
+          Criado em 1920x1080 (dica de qualidade); o CSS o faz preencher o box. */}
+      <div
+        ref={hostRef}
+        className="pointer-events-none h-full w-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full"
+      />
 
       {/* Camada que captura o clique no vídeo: alterna play/pause e bloqueia o YouTube */}
       <button

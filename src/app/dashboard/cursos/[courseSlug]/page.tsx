@@ -174,6 +174,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
           course={course}
           lessons={lessons}
           initialCompletedIds={completedIds}
+          studentId={student?.id}
         />
       ) : (
         <div className="rounded-medium border border-dashed border-border-default bg-background-elevated px-6 py-14 text-center">
