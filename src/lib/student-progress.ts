@@ -2,11 +2,25 @@ import type { AdminCategory, AdminCourse, AdminLesson } from "@/types/admin";
 import type { LearningPathStatus } from "@/types/learning";
 
 /**
- * Helpers PUROS de progresso do aluno, calculados a partir do conjunto de aulas
- * concluídas (ids). Usados tanto no servidor (páginas) quanto no cliente
- * (browsers de cursos/aplicações). Conclusão é medida pelos VÍDEOS: uma aula conta
- * se está publicada e tem `videoUrl`.
+ * Helpers PUROS de progresso do aluno, calculados a partir do PROGRESSO POR AULA
+ * (mapa `lessonId -> percent`, 0–100). O progresso é medido pelos VÍDEOS: uma
+ * aula conta se está publicada e tem `videoUrl`.
+ *
+ * A % do curso é a média das % das suas aulas-vídeo; a da aplicação, a média das
+ * aulas-vídeo de todos os seus cursos. "Concluída" = percent >= COMPLETE_THRESHOLD.
  */
+
+/** Percentual a partir do qual a aula é considerada concluída. */
+export const COMPLETE_THRESHOLD = 95;
+
+/** Mapa de progresso do aluno: id da aula → % assistida (0–100). */
+export type LessonProgressMap = Map<string, number>;
+
+function pctOf(progress: LessonProgressMap, lessonId: string): number {
+  const value = progress.get(lessonId) ?? 0;
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(100, Math.max(0, value));
+}
 
 export type CourseCompletion = {
   total: number;
@@ -25,14 +39,20 @@ export function videoLessons(lessons: AdminLesson[], courseId: string): AdminLes
 export function courseCompletion(
   courseId: string,
   lessons: AdminLesson[],
-  completed: Set<string>,
+  progress: LessonProgressMap,
 ): CourseCompletion {
   const vids = videoLessons(lessons, courseId);
   const total = vids.length;
-  const done = vids.filter((l) => completed.has(l.id)).length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  let sum = 0;
+  let done = 0;
+  for (const lesson of vids) {
+    const p = pctOf(progress, lesson.id);
+    sum += p;
+    if (p >= COMPLETE_THRESHOLD) done += 1;
+  }
+  const pct = total > 0 ? Math.round(sum / total) : 0;
   const status: LearningPathStatus =
-    total > 0 && done === total ? "completed" : done > 0 ? "in_progress" : "not_started";
+    total > 0 && done === total ? "completed" : sum > 0 ? "in_progress" : "not_started";
   return { total, done, pct, status };
 }
 
@@ -40,9 +60,9 @@ export function courseCompletion(
 export function courseWithRealProgress(
   course: AdminCourse,
   lessons: AdminLesson[],
-  completed: Set<string>,
+  progress: LessonProgressMap,
 ): AdminCourse {
-  const { pct, status } = courseCompletion(course.id, lessons, completed);
+  const { pct, status } = courseCompletion(course.id, lessons, progress);
   return { ...course, progress: pct, status };
 }
 
@@ -50,10 +70,10 @@ export function courseWithRealProgress(
 export function isCertificateEarned(
   course: AdminCourse,
   lessons: AdminLesson[],
-  completed: Set<string>,
+  progress: LessonProgressMap,
 ): boolean {
   if (!course.certificate) return false;
-  const { total, done } = courseCompletion(course.id, lessons, completed);
+  const { total, done } = courseCompletion(course.id, lessons, progress);
   return total > 0 && done === total;
 }
 
@@ -66,38 +86,37 @@ export type ApplicationProgress = {
   inProgressCourses: number;
 };
 
-/** Progresso agregado de uma aplicação (soma dos vídeos dos seus cursos). */
+/** Progresso agregado de uma aplicação (média dos vídeos dos seus cursos). */
 export function applicationProgress(
   categoryId: string,
   courses: AdminCourse[],
   lessons: AdminLesson[],
-  completed: Set<string>,
+  progress: LessonProgressMap,
 ): ApplicationProgress {
   const appCourses = courses.filter((c) => c.published && c.categoryId === categoryId);
   const courseIds = new Set(appCourses.map((c) => c.id));
-  const lessonCount = lessons.filter(
-    (l) => l.published && courseIds.has(l.courseId),
-  ).length;
+  const appVideoLessons = lessons.filter(
+    (l) => l.published && Boolean(l.videoUrl) && courseIds.has(l.courseId),
+  );
 
-  let total = 0;
-  let done = 0;
+  const total = appVideoLessons.length;
+  let sum = 0;
+  for (const lesson of appVideoLessons) sum += pctOf(progress, lesson.id);
+
   let completedCourses = 0;
   let inProgressCourses = 0;
-
   for (const course of appCourses) {
-    const cc = courseCompletion(course.id, lessons, completed);
-    total += cc.total;
-    done += cc.done;
+    const cc = courseCompletion(course.id, lessons, progress);
     if (cc.status === "completed") completedCourses += 1;
     else if (cc.status === "in_progress") inProgressCourses += 1;
   }
 
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const pct = total > 0 ? Math.round(sum / total) : 0;
   const allComplete =
     appCourses.length > 0 && completedCourses === appCourses.length && total > 0;
   const status: LearningPathStatus = allComplete
     ? "completed"
-    : done > 0
+    : sum > 0
       ? "in_progress"
       : "not_started";
 
@@ -105,7 +124,7 @@ export function applicationProgress(
     pct,
     status,
     courseCount: appCourses.length,
-    lessonCount,
+    lessonCount: appVideoLessons.length,
     completedCourses,
     inProgressCourses,
   };
@@ -116,9 +135,9 @@ export function categoryWithRealProgress(
   category: AdminCategory,
   courses: AdminCourse[],
   lessons: AdminLesson[],
-  completed: Set<string>,
+  progress: LessonProgressMap,
 ): AdminCategory {
-  const p = applicationProgress(category.id, courses, lessons, completed);
+  const p = applicationProgress(category.id, courses, lessons, progress);
   return {
     ...category,
     trackCount: p.courseCount,

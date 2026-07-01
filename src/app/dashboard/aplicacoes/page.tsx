@@ -12,7 +12,7 @@ import {
   type TrackCategoryWithStatus,
 } from "@/components/tracks/TracksBrowser";
 import { readContent } from "@/lib/content/store.server";
-import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getStudentProgress } from "@/lib/content/progress.server";
 import { getCurrentStudent } from "@/lib/auth/student";
 import {
   applicationProgress,
@@ -31,8 +31,8 @@ export const dynamic = "force-dynamic";
 export default async function AplicacoesPage() {
   const content = await readContent();
   const student = await getCurrentStudent();
-  const completions = await getStudentCompletions(student?.id);
-  const completedSet = new Set(completions.map((c) => c.lessonId));
+  const rows = await getStudentProgress(student?.id);
+  const progress = new Map(rows.map((r) => [r.lessonId, r.percent]));
 
   const published = content.categories.filter((c) => c.published);
   const categories: TrackCategoryWithStatus[] = published.map((c) => {
@@ -40,13 +40,13 @@ export default async function AplicacoesPage() {
       c,
       content.courses,
       content.lessons,
-      completedSet,
+      progress,
     );
     const { status } = applicationProgress(
       c.id,
       content.courses,
       content.lessons,
-      completedSet,
+      progress,
     );
     return { ...withProgress, status };
   });

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { CoursesBrowser, type ApplicationOption } from "@/components/courses/CoursesBrowser";
 import { readContent } from "@/lib/content/store.server";
-import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getStudentProgress } from "@/lib/content/progress.server";
 import { getCurrentStudent } from "@/lib/auth/student";
 import { courseWithRealProgress } from "@/lib/student-progress";
 import { slugify } from "@/lib/admin/options";
@@ -26,26 +26,27 @@ export const dynamic = "force-dynamic";
 export default async function CursosPage() {
   const content = await readContent();
   const student = await getCurrentStudent();
-  const completions = await getStudentCompletions(student?.id);
-  const completedSet = new Set(completions.map((c) => c.lessonId));
+  const rows = await getStudentProgress(student?.id);
+  const progress = new Map(rows.map((r) => [r.lessonId, r.percent]));
 
   const published = content.courses.filter((c) => c.published);
   const courses = published.map((c) =>
-    courseWithRealProgress(c, content.lessons, completedSet),
+    courseWithRealProgress(c, content.lessons, progress),
   );
 
   const applications: ApplicationOption[] = content.categories
     .filter((c) => c.published)
     .map((c) => ({ id: c.id, name: c.name, slug: slugify(c.name) }));
 
-  // "Continuar de onde parou": curso em andamento com a conclusão mais recente.
+  // "Continuar de onde parou": qualquer curso em andamento (mesmo só iniciado),
+  // preferindo o de atividade mais recente que temos registro (conclusão).
   const inProgress = courses.filter((c) => c.status === "in_progress");
-  const recent = [...completions].sort((a, b) =>
-    b.completedAt.localeCompare(a.completedAt),
-  );
+  const recent = rows
+    .filter((r) => r.completedAt)
+    .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""));
   let continueCourse = inProgress[0];
-  for (const comp of recent) {
-    const match = inProgress.find((c) => c.id === comp.courseId);
+  for (const row of recent) {
+    const match = inProgress.find((c) => c.id === row.courseId);
     if (match) {
       continueCourse = match;
       break;

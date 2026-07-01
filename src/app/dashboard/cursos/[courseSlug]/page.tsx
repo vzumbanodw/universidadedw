@@ -6,7 +6,7 @@ import { CoursePlayer } from "@/components/courses/CoursePlayer";
 import { Badge } from "@/components/ui/Badge";
 import { Progress } from "@/components/ui/Progress";
 import { readContent } from "@/lib/content/store.server";
-import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getStudentProgress } from "@/lib/content/progress.server";
 import { getCurrentStudent } from "@/lib/auth/student";
 import { courseCompletion } from "@/lib/student-progress";
 import { formatMinutes } from "@/lib/formatters";
@@ -73,14 +73,14 @@ export default async function CourseDetailPage({ params }: PageProps) {
     .sort((a, b) => a.order - b.order)
     .map(toCourseLesson);
 
-  // Progresso REAL do aluno (conclusão de vídeos).
+  // Progresso REAL do aluno (% assistida por vídeo).
   const student = await getCurrentStudent();
-  const completions = await getStudentCompletions(student?.id);
-  const completedSet = new Set(completions.map((c) => c.lessonId));
-  const completedIds = lessons
-    .filter((l) => completedSet.has(l.id))
-    .map((l) => l.id);
-  const realProgress = courseCompletion(course.id, content.lessons, completedSet).pct;
+  const rows = await getStudentProgress(student?.id);
+  const progress = new Map(rows.map((r) => [r.lessonId, r.percent]));
+  const initialProgress = lessons
+    .filter((l) => progress.has(l.id))
+    .map((l) => ({ lessonId: l.id, percent: progress.get(l.id) ?? 0 }));
+  const realProgress = courseCompletion(course.id, content.lessons, progress).pct;
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-6">
@@ -173,7 +173,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
         <CoursePlayer
           course={course}
           lessons={lessons}
-          initialCompletedIds={completedIds}
+          initialProgress={initialProgress}
           studentId={student?.id}
         />
       ) : (

@@ -26,13 +26,14 @@ import {
   getVideoPosition,
   saveVideoPosition,
 } from "@/lib/video-position";
+import { COMPLETE_THRESHOLD } from "@/lib/student-progress";
 import type { Course, CourseLesson } from "@/types/courses";
 
 type CoursePlayerProps = {
   course: Course;
   lessons: CourseLesson[];
-  /** Ids das aulas já concluídas por este aluno (progresso real). */
-  initialCompletedIds?: string[];
+  /** Progresso inicial por aula deste aluno (id + % assistida, 0–100). */
+  initialProgress?: { lessonId: string; percent: number }[];
   /** Aluno logado — usado para namespaced da posição salva (retomar). */
   studentId?: string;
 };
@@ -46,35 +47,47 @@ const RESOURCE_ICON = {
 export function CoursePlayer({
   course,
   lessons,
-  initialCompletedIds = [],
+  initialProgress = [],
   studentId,
 }: CoursePlayerProps) {
-  const [completedIds, setCompletedIds] = useState<Set<string>>(
-    () => new Set(initialCompletedIds),
+  // % assistida por aula (0–100). Atualiza ao vivo enquanto o aluno assiste.
+  const [percents, setPercents] = useState<Record<string, number>>(() =>
+    Object.fromEntries(initialProgress.map((p) => [p.lessonId, p.percent])),
   );
   const [flashDone, setFlashDone] = useState(false);
 
+  const isDone = (lessonId: string) => (percents[lessonId] ?? 0) >= COMPLETE_THRESHOLD;
+
   const firstOpenLesson = useMemo(() => {
-    const set = new Set(initialCompletedIds);
-    const index = lessons.findIndex((lesson) => !set.has(lesson.id));
+    const done = new Set(
+      initialProgress
+        .filter((p) => p.percent >= COMPLETE_THRESHOLD)
+        .map((p) => p.lessonId),
+    );
+    const index = lessons.findIndex((lesson) => !done.has(lesson.id));
     return index === -1 ? 0 : index;
-  }, [lessons, initialCompletedIds]);
+  }, [lessons, initialProgress]);
 
   const [selectedIndex, setSelectedIndex] = useState(firstOpenLesson);
   const selectedLesson = lessons[selectedIndex] ?? lessons[0]!;
-  const selectedCompleted = completedIds.has(selectedLesson.id);
-  const completedCount = lessons.filter((l) => completedIds.has(l.id)).length;
-  const videoCount = lessons.filter((l) => l.videoUrl).length;
-  const doneVideoCount = lessons.filter(
-    (l) => l.videoUrl && completedIds.has(l.id),
-  ).length;
-  const livePct = videoCount > 0 ? Math.round((doneVideoCount / videoCount) * 100) : 0;
+  const selectedCompleted = isDone(selectedLesson.id);
+  const completedCount = lessons.filter((l) => isDone(l.id)).length;
+
+  // % do curso = média das % das aulas-vídeo.
+  const videoLessonList = lessons.filter((l) => l.videoUrl);
+  const livePct =
+    videoLessonList.length > 0
+      ? Math.round(
+          videoLessonList.reduce((sum, l) => sum + (percents[l.id] ?? 0), 0) /
+            videoLessonList.length,
+        )
+      : 0;
+
   const selectedNumber = selectedIndex + 1;
   const embed = getVideoEmbed(selectedLesson.videoUrl);
   const courseId = course.id;
 
-  // Retomar de onde parou: posição salva localmente por aluno (só conveniência
-  // de reprodução; a conclusão oficial continua no servidor via markComplete).
+  // Retomar de onde parou: posição salva no navegador, por aluno.
   const [resumeSeconds, setResumeSeconds] = useState(0);
   useEffect(() => {
     setResumeSeconds(getVideoPosition(studentId, courseId, selectedLesson.id));
@@ -85,19 +98,45 @@ export function CoursePlayer({
     lastSaveRef.current = 0;
   }, [selectedLesson.id]);
 
-  function handleProgress(seconds: number) {
-    if (seconds - lastSaveRef.current >= 5) {
-      lastSaveRef.current = seconds;
-      saveVideoPosition(studentId, courseId, selectedLesson.id, seconds);
+  /** Atualiza a % localmente (nunca regride) e salva no servidor. */
+  function persistPercent(lessonId: string, rawPercent: number) {
+    const pct = Math.min(100, Math.max(0, Math.round(rawPercent)));
+    setPercents((prev) =>
+      pct > (prev[lessonId] ?? 0) ? { ...prev, [lessonId]: pct } : prev,
+    );
+    void fetch("/api/progress/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, percent: pct }),
+    }).catch(() => {});
+  }
+
+  /**
+   * Chamado ~4x/s pelo player. Salva a posição (retomar) e a % (a cada ~5s, com
+   * a primeira marca imediata para o curso já contar como "Em andamento").
+   */
+  function handleProgress(seconds: number, duration: number) {
+    if (!(seconds > 0)) return; // ignora ticks antes de o vídeo realmente tocar
+    if (lastSaveRef.current !== 0 && seconds - lastSaveRef.current < 5) return;
+    lastSaveRef.current = seconds;
+    saveVideoPosition(studentId, courseId, selectedLesson.id, seconds);
+    if (duration > 0 && !isDone(selectedLesson.id)) {
+      persistPercent(selectedLesson.id, Math.max(1, (seconds / duration) * 100));
     }
   }
-  function handlePause(seconds: number) {
+
+  function handlePause(seconds: number, duration: number) {
+    if (!(seconds > 0)) return;
     saveVideoPosition(studentId, courseId, selectedLesson.id, seconds);
+    lastSaveRef.current = seconds;
+    if (duration > 0 && !isDone(selectedLesson.id)) {
+      persistPercent(selectedLesson.id, Math.max(1, (seconds / duration) * 100));
+    }
   }
 
   async function markComplete(lessonId: string) {
-    if (completedIds.has(lessonId)) return;
-    setCompletedIds((prev) => new Set(prev).add(lessonId));
+    if (isDone(lessonId)) return;
+    setPercents((prev) => ({ ...prev, [lessonId]: 100 }));
     clearVideoPosition(studentId, courseId, lessonId);
     setFlashDone(true);
     window.setTimeout(() => setFlashDone(false), 4000);
@@ -108,7 +147,7 @@ export function CoursePlayer({
         body: JSON.stringify({ lessonId }),
       });
     } catch {
-      /* offline: segue marcado localmente; tenta de novo no próximo fim de vídeo */
+      /* offline: segue marcado localmente; tenta de novo depois */
     }
   }
 
@@ -155,10 +194,16 @@ export function CoursePlayer({
                       }
                     }}
                     onTimeUpdate={(event) =>
-                      handleProgress(event.currentTarget.currentTime)
+                      handleProgress(
+                        event.currentTarget.currentTime,
+                        event.currentTarget.duration,
+                      )
                     }
                     onPause={(event) =>
-                      handlePause(event.currentTarget.currentTime)
+                      handlePause(
+                        event.currentTarget.currentTime,
+                        event.currentTarget.duration,
+                      )
                     }
                     onEnded={() => markComplete(selectedLesson.id)}
                     className="absolute inset-0 h-full w-full bg-black"
@@ -365,6 +410,9 @@ export function CoursePlayer({
         <ol className="flex flex-col gap-2">
           {lessons.map((lesson, index) => {
             const active = index === selectedIndex;
+            const pct = Math.min(100, Math.max(0, percents[lesson.id] ?? 0));
+            const done = pct >= COMPLETE_THRESHOLD;
+            const started = pct > 0 && !done;
             return (
               <li key={lesson.id}>
                 <button
@@ -381,27 +429,30 @@ export function CoursePlayer({
                   <span
                     className={cn(
                       "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
-                      completedIds.has(lesson.id)
+                      done
                         ? "bg-background-success text-foreground-success"
                         : active
                           ? "bg-brand-primary text-white"
-                          : "bg-background-subtle text-foreground-muted",
+                          : started
+                            ? "bg-brand-orange/20 text-[#B97A0F]"
+                            : "bg-background-subtle text-foreground-muted",
                     )}
                     aria-hidden
                   >
-                    {completedIds.has(lesson.id) ? (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    ) : (
-                      index + 1
-                    )}
+                    {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="line-clamp-2 text-[13px] font-medium leading-snug text-foreground-heading">
                       {lesson.title}
                     </span>
-                    <span className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-foreground-muted">
-                      <Clock className="h-3 w-3" aria-hidden />
-                      {formatMinutes(lesson.durationMinutes)}
+                    <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-foreground-muted">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" aria-hidden />
+                        {formatMinutes(lesson.durationMinutes)}
+                      </span>
+                      {started ? (
+                        <span className="font-medium text-[#B97A0F]">· {pct}%</span>
+                      ) : null}
                     </span>
                   </span>
                 </button>

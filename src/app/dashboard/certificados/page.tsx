@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Progress } from "@/components/ui/Progress";
 import { readContent } from "@/lib/content/store.server";
-import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getStudentProgress } from "@/lib/content/progress.server";
 import { getCurrentStudent } from "@/lib/auth/student";
 import { courseCompletion, videoLessons } from "@/lib/student-progress";
 import { formatDate } from "@/lib/formatters";
@@ -31,13 +31,15 @@ function slugOf(href: string, id: string): string {
 export default async function CertificadosPage() {
   const content = await readContent();
   const student = await getCurrentStudent();
-  const completions = await getStudentCompletions(student?.id);
-  const completedSet = new Set(completions.map((c) => c.lessonId));
-  const dateByLesson = new Map(completions.map((c) => [c.lessonId, c.completedAt]));
+  const rows = await getStudentProgress(student?.id);
+  const progress = new Map(rows.map((r) => [r.lessonId, r.percent]));
+  const dateByLesson = new Map(
+    rows.filter((r) => r.completedAt).map((r) => [r.lessonId, r.completedAt as string]),
+  );
 
   const certCourses = content.courses.filter((c) => c.published && c.certificate);
   const items = certCourses.map((course) => {
-    const cc = courseCompletion(course.id, content.lessons, completedSet);
+    const cc = courseCompletion(course.id, content.lessons, progress);
     const earned = cc.total > 0 && cc.done === cc.total;
     let earnedAt: string | undefined;
     if (earned) {

@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { readContent } from "@/lib/content/store.server";
-import { getStudentCompletions } from "@/lib/content/progress.server";
+import { getStudentProgress } from "@/lib/content/progress.server";
 import { getCurrentStudent } from "@/lib/auth/student";
 import {
   categoryWithRealProgress,
@@ -94,21 +94,21 @@ function buildFeatures(
 export default async function DashboardPage() {
   const content = await readContent();
   const student = await getCurrentStudent();
-  const completions = await getStudentCompletions(student?.id);
-  const completedSet = new Set(completions.map((c) => c.lessonId));
+  const rows = await getStudentProgress(student?.id);
+  const progress = new Map(rows.map((r) => [r.lessonId, r.percent]));
 
   const categories = content.categories
     .filter((c) => c.published)
     .map((c) =>
-      categoryWithRealProgress(c, content.courses, content.lessons, completedSet),
+      categoryWithRealProgress(c, content.courses, content.lessons, progress),
     );
   const courses = content.courses
     .filter((c) => c.published)
-    .map((c) => courseWithRealProgress(c, content.lessons, completedSet));
+    .map((c) => courseWithRealProgress(c, content.lessons, progress));
 
   const certCourses = courses.filter((c) => c.certificate);
   const certEarned = certCourses.filter((c) =>
-    isCertificateEarned(c, content.lessons, completedSet),
+    isCertificateEarned(c, content.lessons, progress),
   ).length;
 
   const features = buildFeatures(categories, courses, certCourses.length, certEarned);
