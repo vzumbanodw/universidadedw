@@ -120,6 +120,33 @@ export type AccessRequest = {
 };
 
 /* -------------------------------------------------------------------------- */
+/* Redefinição de senha ("Esqueci minha senha")                                */
+/* -------------------------------------------------------------------------- */
+
+export type PasswordResetStatus = "pending" | "approved" | "rejected" | "used";
+
+export const PASSWORD_RESET_STATUS_LABEL: Record<PasswordResetStatus, string> = {
+  pending: "Pendente",
+  approved: "Aprovada — aguardando o aluno",
+  rejected: "Recusada",
+  used: "Concluída",
+};
+
+/**
+ * Pedido de redefinição de senha enviado pelo "Esqueci minha senha" do login.
+ * O operador aprova/recusa no backoffice; aprovado, o aluno define a nova
+ * senha na tela de primeiro acesso (o usuário do Auth é PRESERVADO — o
+ * progresso não se perde).
+ */
+export type PasswordResetRequest = {
+  id: string;
+  email: string;
+  status: PasswordResetStatus;
+  createdAt: string;
+  reviewedAt?: string;
+};
+
+/* -------------------------------------------------------------------------- */
 /* Novidades & Updates (notas de versão → futura landing page)                 */
 /* -------------------------------------------------------------------------- */
 
