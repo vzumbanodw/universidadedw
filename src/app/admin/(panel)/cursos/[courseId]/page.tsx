@@ -151,12 +151,6 @@ export default function CourseDetailAdminPage({
               <Meta label="Formato" value={course.format} />
               <Meta label="Duração estimada" value={formatMinutes(course.estimatedMinutes)} />
             </dl>
-            {course.promoVideoUrl ? (
-              <p className="mt-1 inline-flex items-center gap-1.5 text-[12px] text-foreground-muted">
-                <Video className="h-3.5 w-3.5 text-brand-primary" aria-hidden />
-                Vídeo de apresentação configurado
-              </p>
-            ) : null}
           </div>
         </Panel>
 

@@ -38,7 +38,6 @@ type FormState = {
   featured: boolean;
   published: boolean;
   coverImageUrl?: string;
-  promoVideoUrl?: string;
 };
 
 const EMPTY: FormState = {
@@ -53,7 +52,6 @@ const EMPTY: FormState = {
   featured: false,
   published: true,
   coverImageUrl: undefined,
-  promoVideoUrl: undefined,
 };
 
 export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProps) {
@@ -83,7 +81,6 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
             featured: Boolean(course.featured),
             published: course.published,
             coverImageUrl: course.coverImageUrl,
-            promoVideoUrl: course.promoVideoUrl,
           }
         : { ...EMPTY, categoryId: store.categories[0]?.id ?? "" },
     );
@@ -133,7 +130,6 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
       certificate: form.certificate,
       href: `/dashboard/cursos/${slug}`,
       coverImageUrl: form.coverImageUrl,
-      promoVideoUrl: form.promoVideoUrl,
       published: form.published,
     };
 
@@ -229,14 +225,6 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
           hint="Capa retrato exibida no card e na página do curso."
           value={form.coverImageUrl}
           onChange={(value) => update("coverImageUrl", value)}
-        />
-
-        <MediaField
-          label="Vídeo de apresentação"
-          kind="video"
-          hint="Opcional. URL de streaming (Vimeo, YouTube, MUX…)."
-          value={form.promoVideoUrl}
-          onChange={(value) => update("promoVideoUrl", value)}
         />
 
         <div className="flex flex-wrap gap-x-6 gap-y-2.5">
