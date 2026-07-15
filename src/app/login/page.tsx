@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LoginVisualPanel } from "@/components/auth/LoginVisualPanel";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { WhatsAppContactButton } from "@/components/auth/WhatsAppContactButton";
 import { GraduationCap } from "lucide-react";
 import { getCurrentStudent } from "@/lib/auth/student";
 
@@ -59,6 +60,8 @@ export default async function LoginPage() {
             </div>
 
             <LoginForm />
+
+            <WhatsAppContactButton className="mt-7" />
           </AuthCard>
         </div>
 
