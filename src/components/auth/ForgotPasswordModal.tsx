@@ -65,7 +65,7 @@ export function ForgotPasswordModal({
       onClose={onClose}
       size="md"
       title="Esqueci minha senha"
-      description="Envie o seu e-mail e a equipe aprovará a redefinição. Depois da aprovação, defina a nova senha na tela de primeiro acesso."
+      description="Envie o seu e-mail e a equipe aprovará a redefinição. Depois da aprovação, você receberá um e-mail com o link para definir a nova senha."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -86,9 +86,9 @@ export function ForgotPasswordModal({
             aria-hidden
           />
           <p className="text-[13px] leading-relaxed text-foreground-success">
-            Solicitação enviada. Assim que for aprovada, volte e use{" "}
-            <strong className="font-semibold">Primeiro acesso</strong> para
-            definir a sua nova senha — seu progresso continua salvo.
+            Solicitação enviada. Assim que for aprovada, você receberá um
+            e-mail com o link para definir a sua nova senha — seu progresso
+            continua salvo.
           </p>
         </div>
       ) : (

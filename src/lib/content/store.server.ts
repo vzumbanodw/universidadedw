@@ -9,6 +9,7 @@ import {
 } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/types";
 import type { AccessRequest } from "@/types/admin";
+import { newActivationToken } from "@/lib/auth/activation-token";
 import {
   insertAccessRequestToSupabase,
   readStateFromSupabase,
@@ -190,12 +191,14 @@ export async function createAccessRequest(input: {
   name: string;
   email: string;
   companyName?: string;
+  cnpj?: string;
 }): Promise<AccessRequest> {
   const req: AccessRequest = {
     id: newRequestId(),
     name: input.name.trim(),
     email: input.email.trim().toLowerCase(),
     companyName: input.companyName?.trim() || undefined,
+    cnpj: input.cnpj?.trim() || undefined,
     status: "pending",
     createdAt: new Date().toISOString(),
   };
@@ -223,17 +226,27 @@ export async function createAccessRequest(input: {
   return req;
 }
 
-/** Aprova/recusa uma solicitação (operador). Retorna a solicitação atualizada. */
+/**
+ * Aprova/recusa uma solicitação (operador). Na APROVAÇÃO, gera o token de
+ * ativação — o link pessoal de criação de senha enviado por e-mail ao
+ * solicitante. Retorna a solicitação atualizada (com o token).
+ */
 export async function reviewAccessRequest(
   id: string,
   status: "approved" | "rejected",
   companyId?: string,
 ): Promise<AccessRequest | null> {
   const reviewedAt = new Date().toISOString();
+  const activationToken = status === "approved" ? newActivationToken() : undefined;
 
   if (isSupabaseConfigured() && hasServiceRole()) {
     try {
-      return await updateAccessRequestInSupabase(id, { status, companyId, reviewedAt });
+      return await updateAccessRequestInSupabase(id, {
+        status,
+        companyId,
+        reviewedAt,
+        activationToken,
+      });
     } catch (error) {
       if (!(error instanceof TablesMissing)) throw error;
     }
@@ -243,7 +256,7 @@ export async function reviewAccessRequest(
   let updated: AccessRequest | null = null;
   const next = content.accessRequests.map((r) => {
     if (r.id !== id) return r;
-    updated = { ...r, status, companyId: companyId ?? r.companyId, reviewedAt };
+    updated = { ...r, status, companyId: companyId ?? r.companyId, reviewedAt, activationToken };
     return updated;
   });
   await writeContent({ ...content, accessRequests: next });

@@ -1,17 +1,18 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
   listPasswordResetRequests,
   reviewPasswordResetRequest,
 } from "@/lib/content/password-resets.server";
+import { sendPasswordResetApprovedEmail } from "@/lib/email/mailer.server";
 
 /**
  * Gestão das solicitações de redefinição de senha pelo OPERADOR (backoffice).
  *
  * GET  → lista todas as solicitações.
  * POST → { id, action: "approve" | "reject" } revisa uma solicitação pendente.
- *        Aprovada, o aluno define a nova senha na tela de primeiro acesso —
- *        o usuário do Auth é preservado, então o progresso não se perde.
+ *        Aprovada, o aluno recebe por e-mail o link pessoal para definir a
+ *        nova senha — o usuário do Auth é preservado, o progresso não se perde.
  */
 
 async function isOperator(): Promise<boolean> {
@@ -53,7 +54,16 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
-    return NextResponse.json({ ok: true, request: updated });
+    if (action === "approve") {
+      // Link pessoal de redefinição por e-mail, depois da resposta.
+      const { email, activationToken } = updated;
+      after(() => sendPasswordResetApprovedEmail({ email, activationToken }));
+    }
+    // O token de ativação só circula no e-mail do aluno — nunca no browser.
+    return NextResponse.json({
+      ok: true,
+      request: { ...updated, activationToken: undefined },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: (error as Error).message ?? "Falha ao revisar." },

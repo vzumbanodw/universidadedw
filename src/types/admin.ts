@@ -112,11 +112,15 @@ export type AccessRequest = {
   email: string;
   /** Empresa digitada pelo solicitante (texto livre). */
   companyName?: string;
+  /** CNPJ da empresa informado pelo solicitante (formatado: 00.000.000/0000-00). */
+  cnpj?: string;
   /** Empresa vinculada na aprovação (id de Company). */
   companyId?: string;
   status: AccessRequestStatus;
   createdAt: string;
   reviewedAt?: string;
+  /** Token do link de criação de senha, gerado na aprovação (e-mail). */
+  activationToken?: string;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -144,6 +148,8 @@ export type PasswordResetRequest = {
   status: PasswordResetStatus;
   createdAt: string;
   reviewedAt?: string;
+  /** Token do link de redefinição, gerado na aprovação (e-mail). */
+  activationToken?: string;
 };
 
 /* -------------------------------------------------------------------------- */

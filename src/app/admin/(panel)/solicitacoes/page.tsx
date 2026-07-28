@@ -161,6 +161,9 @@ export default function SolicitacoesPage() {
                       {req.companyName ? (
                         <span className="text-foreground-muted">· {req.companyName}</span>
                       ) : null}
+                      {req.cnpj ? (
+                        <span className="text-foreground-muted">· CNPJ {req.cnpj}</span>
+                      ) : null}
                     </p>
                   </div>
                 </div>

@@ -122,6 +122,9 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
                 Empresa informada: {request.companyName}
               </p>
             ) : null}
+            {request.cnpj ? (
+              <p className="mt-0.5 text-foreground-muted">CNPJ: {request.cnpj}</p>
+            ) : null}
           </div>
         ) : null}
 

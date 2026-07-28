@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -100,15 +99,6 @@ export function LoginForm() {
       </Button>
 
       <div className="flex flex-col gap-1 text-center text-[13px] leading-relaxed text-foreground-disabled">
-        <p>
-          Primeira vez aqui?{" "}
-          <Link
-            href="/primeiro-acesso"
-            className="font-medium text-foreground-brand underline-offset-4 hover:underline"
-          >
-            Defina sua senha de acesso
-          </Link>
-        </p>
         <p>
           O acesso é fornecido pela sua empresa.{" "}
           <button

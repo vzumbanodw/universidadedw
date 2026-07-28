@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { createPasswordResetRequest } from "@/lib/content/password-resets.server";
 import { readContent } from "@/lib/content/store.server";
+import { notifyBackofficeNewRequest } from "@/lib/email/mailer.server";
 
 /**
  * "Esqueci minha senha" (endpoint PÚBLICO da tela de login): registra uma
@@ -29,7 +30,10 @@ export async function POST(request: Request) {
     const content = await readContent();
     const member = content.members.find((m) => m.email.toLowerCase() === email);
     if (member && member.status !== "suspended") {
-      await createPasswordResetRequest(email);
+      const created = await createPasswordResetRequest(email);
+      // Aviso ao backoffice só quando há solicitação NOVA (não em repetições),
+      // depois da resposta (não atrasa nem quebra o fluxo do aluno).
+      if (created) after(() => notifyBackofficeNewRequest({ kind: "password-reset", email }));
     }
     // Genérico de propósito (não confirma nem nega o cadastro do e-mail).
     return NextResponse.json({ ok: true });

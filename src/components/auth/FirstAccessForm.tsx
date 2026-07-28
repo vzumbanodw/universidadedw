@@ -8,16 +8,24 @@ import { Button } from "@/components/ui/Button";
 import { FormError } from "@/components/ui/FormError";
 import { PasswordField } from "./PasswordField";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
 
+type Props = {
+  /** Token do link pessoal recebido por e-mail. */
+  token: string;
+  /** E-mail resolvido pelo token (somente exibição — o servidor não confia nele). */
+  email: string;
+  /** true = redefinição aprovada; false = primeiro acesso. */
+  isReset?: boolean;
+};
+
 /**
- * Formulário de PRIMEIRO ACESSO (e de redefinição aprovada): o aluno informa o
- * e-mail cadastrado e define a senha. Em caso de sucesso já entra no dashboard.
+ * Formulário de criação de senha, aberto pelo link pessoal do e-mail de
+ * aprovação. O e-mail vem travado (identificado pelo token); a pessoa só
+ * escolhe a senha. Em caso de sucesso já entra no dashboard.
  */
-export function FirstAccessForm() {
+export function FirstAccessForm({ token, email, isReset = false }: Props) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,10 +35,6 @@ export function FirstAccessForm() {
     event.preventDefault();
     setError(null);
 
-    if (!EMAIL_RE.test(email.trim())) {
-      setError("Informe um e-mail válido.");
-      return;
-    }
     if (password.length < MIN_PASSWORD) {
       setError(`A senha precisa ter pelo menos ${MIN_PASSWORD} caracteres.`);
       return;
@@ -45,7 +49,7 @@ export function FirstAccessForm() {
       const res = await fetch("/api/auth/first-access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ token, password }),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -76,19 +80,16 @@ export function FirstAccessForm() {
       <FormError message={error} />
 
       <Input
-        label="E-mail corporativo"
+        label="Seu e-mail"
         type="email"
-        placeholder="voce@empresa.com"
-        autoComplete="email"
-        inputMode="email"
-        required
-        startIcon={<Mail className="h-4 w-4" />}
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        readOnly
+        disabled
+        startIcon={<Mail className="h-4 w-4" />}
       />
 
       <PasswordField
-        label="Crie sua senha"
+        label={isReset ? "Nova senha" : "Crie sua senha"}
         placeholder="Mínimo de 8 caracteres"
         autoComplete="new-password"
         required
@@ -106,7 +107,7 @@ export function FirstAccessForm() {
       />
 
       <Button type="submit" size="lg" fullWidth loading={loading}>
-        Definir senha e entrar
+        {isReset ? "Redefinir senha e entrar" : "Definir senha e entrar"}
       </Button>
     </form>
   );

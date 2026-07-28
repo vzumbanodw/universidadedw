@@ -5,17 +5,19 @@ import { CheckCircle2, Send } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { formatCnpj, isValidCnpj } from "@/lib/validators/cnpj";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Modal público (tela de login) para solicitar acesso à Universidade. Envia
- * nome, empresa (texto) e email para `/api/access-requests`. O operador aprova
- * ou recusa no backoffice (seção Solicitações).
+ * nome, empresa (texto), CNPJ e email para `/api/access-requests`. O operador
+ * aprova ou recusa no backoffice (seção Solicitações).
  */
 export function AccessRequestModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
+  const [cnpj, setCnpj] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -25,6 +27,7 @@ export function AccessRequestModal({ open, onClose }: { open: boolean; onClose: 
     if (!open) return;
     setName("");
     setCompany("");
+    setCnpj("");
     setEmail("");
     setError(null);
     setSubmitting(false);
@@ -43,6 +46,10 @@ export function AccessRequestModal({ open, onClose }: { open: boolean; onClose: 
       setError("Informe o nome da sua empresa.");
       return;
     }
+    if (!isValidCnpj(cnpj)) {
+      setError("Informe um CNPJ válido.");
+      return;
+    }
     if (!EMAIL_RE.test(e)) {
       setError("Informe um email válido.");
       return;
@@ -53,7 +60,7 @@ export function AccessRequestModal({ open, onClose }: { open: boolean; onClose: 
       const res = await fetch("/api/access-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: n, companyName: c, email: e }),
+        body: JSON.stringify({ name: n, companyName: c, cnpj, email: e }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
@@ -104,7 +111,8 @@ export function AccessRequestModal({ open, onClose }: { open: boolean; onClose: 
               Solicitação enviada!
             </h3>
             <p className="mt-1 text-[13px] text-foreground-muted">
-              Assim que for aprovada, você receberá o login e a senha de acesso.
+              Assim que for aprovada, você receberá um e-mail com o link para
+              criar a sua senha de acesso.
             </p>
           </div>
         </div>
@@ -131,6 +139,15 @@ export function AccessRequestModal({ open, onClose }: { open: boolean; onClose: 
             value={company}
             onChange={(e) => setCompany(e.target.value)}
             placeholder="Óptica Boa Vista"
+          />
+          <Input
+            label="CNPJ da empresa"
+            required
+            value={cnpj}
+            onChange={(e) => setCnpj(formatCnpj(e.target.value))}
+            placeholder="00.000.000/0000-00"
+            maxLength={18}
+            autoComplete="off"
           />
           <Input
             label="Email"

@@ -5,6 +5,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import type { PasswordResetRequest, PasswordResetStatus } from "@/types/admin";
+import { newActivationToken } from "@/lib/auth/activation-token";
 
 /**
  * Solicitações de redefinição de senha ("Esqueci minha senha"), persistidas em
@@ -41,6 +42,7 @@ function fromRow(r: Record<string, unknown>): PasswordResetRequest {
     status: (r.status as PasswordResetStatus) ?? "pending",
     createdAt: r.created_at ? String(r.created_at) : "",
     reviewedAt: r.reviewed_at ? String(r.reviewed_at) : undefined,
+    activationToken: r.activation_token ? String(r.activation_token) : undefined,
   };
 }
 
@@ -54,7 +56,7 @@ export async function listPasswordResetRequests(): Promise<PasswordResetRequest[
   try {
     const { data, error } = await db()
       .from("password_reset_requests")
-      .select("id, email, status, created_at, reviewed_at")
+      .select("id, email, status, created_at, reviewed_at, activation_token")
       .order("created_at", { ascending: false });
     if (error) return [];
     return (data ?? []).map(fromRow);
@@ -66,8 +68,9 @@ export async function listPasswordResetRequests(): Promise<PasswordResetRequest[
 /**
  * Registra uma solicitação pendente para o e-mail. Idempotente: se já houver
  * uma pendente/aprovada (não usada) para o mesmo e-mail, não duplica.
+ * Retorna `true` somente quando uma NOVA solicitação foi criada.
  */
-export async function createPasswordResetRequest(email: string): Promise<void> {
+export async function createPasswordResetRequest(email: string): Promise<boolean> {
   if (!isSupabaseConfigured() || !hasServiceRole()) {
     throw new Error("Redefinição indisponível: Supabase não configurado no servidor.");
   }
@@ -84,7 +87,7 @@ export async function createPasswordResetRequest(email: string): Promise<void> {
   if (existing.error && isMissingTable(existing.error)) {
     throw new Error(MIGRATION_HINT);
   }
-  if (existing.data) return; // já há uma solicitação ativa
+  if (existing.data) return false; // já há uma solicitação ativa
 
   const { error } = await db().from("password_reset_requests").insert({
     id: newRequestId(),
@@ -95,9 +98,13 @@ export async function createPasswordResetRequest(email: string): Promise<void> {
     if (isMissingTable(error)) throw new Error(MIGRATION_HINT);
     throw new Error(`Falha ao registrar solicitação: ${error.message}`);
   }
+  return true;
 }
 
-/** Aprova ou recusa uma solicitação pendente (backoffice). */
+/**
+ * Aprova ou recusa uma solicitação pendente (backoffice). Na aprovação, gera
+ * o token do link de redefinição enviado por e-mail ao aluno.
+ */
 export async function reviewPasswordResetRequest(
   id: string,
   action: "approve" | "reject",
@@ -105,10 +112,14 @@ export async function reviewPasswordResetRequest(
   const status: PasswordResetStatus = action === "approve" ? "approved" : "rejected";
   const { data, error } = await db()
     .from("password_reset_requests")
-    .update({ status, reviewed_at: new Date().toISOString() })
+    .update({
+      status,
+      reviewed_at: new Date().toISOString(),
+      activation_token: action === "approve" ? newActivationToken() : null,
+    })
     .eq("id", id)
     .eq("status", "pending")
-    .select("id, email, status, created_at, reviewed_at")
+    .select("id, email, status, created_at, reviewed_at, activation_token")
     .maybeSingle();
   if (error) {
     if (isMissingTable(error)) throw new Error(MIGRATION_HINT);

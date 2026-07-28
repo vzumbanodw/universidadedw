@@ -380,10 +380,12 @@ function fromAccessRequestRow(r: Row): AccessRequest {
     name: str(r.name),
     email: str(r.email),
     companyName: und(r.company_name),
+    cnpj: und(r.cnpj),
     companyId: und(r.company_id),
     status: (r.status as AccessRequestStatus) ?? "pending",
     createdAt: str(r.created_at),
     reviewedAt: und(r.reviewed_at),
+    activationToken: und(r.activation_token),
   };
 }
 
@@ -393,11 +395,13 @@ function toAccessRequestRow(req: AccessRequest, i: number): Row {
     name: req.name,
     email: req.email,
     company_name: req.companyName ?? null,
+    cnpj: req.cnpj ?? null,
     company_id: req.companyId ?? null,
     status: req.status,
     reviewed_at: req.reviewedAt ?? null,
     sort_order: i,
     created_at: req.createdAt,
+    activation_token: req.activationToken ?? null,
   };
 }
 
@@ -413,7 +417,12 @@ export async function insertAccessRequestToSupabase(req: AccessRequest): Promise
 /** Atualiza status/empresa de uma solicitação. Retorna a linha atualizada. */
 export async function updateAccessRequestInSupabase(
   id: string,
-  patch: { status: AccessRequestStatus; companyId?: string; reviewedAt: string },
+  patch: {
+    status: AccessRequestStatus;
+    companyId?: string;
+    reviewedAt: string;
+    activationToken?: string;
+  },
 ): Promise<AccessRequest | null> {
   const { data, error } = await db()
     .from("access_requests")
@@ -421,6 +430,7 @@ export async function updateAccessRequestInSupabase(
       status: patch.status,
       company_id: patch.companyId ?? null,
       reviewed_at: patch.reviewedAt,
+      activation_token: patch.activationToken ?? null,
     })
     .eq("id", id)
     .select("*")

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { reviewAccessRequest } from "@/lib/content/store.server";
+import { sendAccessApprovedEmail } from "@/lib/email/mailer.server";
 
 /**
  * Endpoint do OPERADOR (cookie `admin_session`): aprova ou recusa uma
@@ -37,7 +38,16 @@ export async function POST(request: Request) {
       action === "approve" ? "approved" : "rejected",
       companyId,
     );
-    return NextResponse.json({ ok: true, request: updated });
+    if (action === "approve" && updated) {
+      // Confirmação com o link pessoal de criação de senha, depois da resposta.
+      const { name, email, activationToken } = updated;
+      after(() => sendAccessApprovedEmail({ name, email, activationToken }));
+    }
+    // O token de ativação só circula no e-mail do solicitante — nunca no browser.
+    return NextResponse.json({
+      ok: true,
+      request: updated ? { ...updated, activationToken: undefined } : updated,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: (error as Error).message ?? "Erro ao processar a solicitação." },
