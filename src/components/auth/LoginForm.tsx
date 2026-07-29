@@ -100,7 +100,7 @@ export function LoginForm() {
 
       <div className="flex flex-col gap-1 text-center text-[13px] leading-relaxed text-foreground-disabled">
         <p>
-          O acesso é fornecido pela sua empresa.{" "}
+          Seu acesso à UniDataweb começa por aqui.{" "}
           <button
             type="button"
             onClick={() => setRequestOpen(true)}

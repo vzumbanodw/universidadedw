@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowLeftRight,
   Building2,
   FileSpreadsheet,
   KeyRound,
@@ -24,6 +25,8 @@ import { CompanyFormDialog } from "@/components/admin/CompanyFormDialog";
 import { MemberFormDialog } from "@/components/admin/MemberFormDialog";
 import { MemberBulkDialog } from "@/components/admin/MemberBulkDialog";
 import { MemberAccessDialog } from "@/components/admin/MemberAccessDialog";
+import { MemberTransferDialog } from "@/components/admin/MemberTransferDialog";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
@@ -57,6 +60,11 @@ export default function CompanyDetailPage({
   const [bulkDialog, setBulkDialog] = useState(false);
   const [accessDialog, setAccessDialog] = useState(false);
   const [accessMember, setAccessMember] = useState<CompanyMember | null>(null);
+  const [transferDialog, setTransferDialog] = useState(false);
+  const [transferMember, setTransferMember] = useState<CompanyMember | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<
+    { kind: "member"; member: CompanyMember } | { kind: "company" } | null
+  >(null);
 
   const company = store.companies.find((c) => c.id === companyId);
   const members = store.membersForCompany(companyId);
@@ -82,8 +90,9 @@ export default function CompanyDetailPage({
     return <div className="mx-auto max-w-[900px] py-10 text-foreground-muted">Carregando…</div>;
   }
 
-  async function handleDeleteMember(member: CompanyMember) {
-    if (!window.confirm(`Remover o acesso de "${member.name}"?`)) return;
+  // Exclusões passam pelo DeleteConfirmDialog (nome + senha do admin,
+  // validada no servidor). Aqui fica só a execução, chamada após confirmar.
+  async function performDeleteMember(member: CompanyMember) {
     // Remove também a conta no Supabase Auth, se existir.
     if (member.authUserId) {
       try {
@@ -97,15 +106,8 @@ export default function CompanyDetailPage({
     store.deleteMember(member.id);
   }
 
-  async function handleDeleteCompany() {
+  async function performDeleteCompany() {
     if (!company) return;
-    const count = members.length;
-    const ok = window.confirm(
-      count > 0
-        ? `Excluir "${company.name}" e seus ${count} funcionário(s)? Os acessos serão removidos e esta ação não pode ser desfeita.`
-        : `Excluir "${company.name}"? Esta ação não pode ser desfeita.`,
-    );
-    if (!ok) return;
     setDeleting(true);
     // Remove também as contas no Supabase Auth dos funcionários com acesso criado.
     await Promise.all(
@@ -249,6 +251,15 @@ export default function CompanyDetailPage({
                     <Pencil className="h-4 w-4" />
                   </IconButton>
                   <IconButton
+                    label="Trocar de empresa"
+                    onClick={() => {
+                      setTransferMember(member);
+                      setTransferDialog(true);
+                    }}
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </IconButton>
+                  <IconButton
                     label={member.authUserId ? "Gerenciar acesso" : "Criar acesso"}
                     variant={member.authUserId ? "active" : "default"}
                     onClick={() => openAccess(member)}
@@ -258,7 +269,7 @@ export default function CompanyDetailPage({
                   <IconButton
                     label="Remover funcionário"
                     variant="danger"
-                    onClick={() => handleDeleteMember(member)}
+                    onClick={() => setDeleteTarget({ kind: "member", member })}
                   >
                     <Trash2 className="h-4 w-4" />
                   </IconButton>
@@ -286,7 +297,7 @@ export default function CompanyDetailPage({
           </div>
           <button
             type="button"
-            onClick={handleDeleteCompany}
+            onClick={() => setDeleteTarget({ kind: "company" })}
             disabled={deleting}
             className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-regular border border-border-error bg-background-elevated px-4 text-sm font-medium text-foreground-error transition-colors hover:bg-background-error disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -316,6 +327,40 @@ export default function CompanyDetailPage({
         open={accessDialog}
         onClose={() => setAccessDialog(false)}
         member={accessMember}
+      />
+      <MemberTransferDialog
+        open={transferDialog}
+        onClose={() => setTransferDialog(false)}
+        member={transferMember}
+      />
+      <DeleteConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title={deleteTarget?.kind === "company" ? "Excluir empresa" : "Remover funcionário"}
+        description={
+          deleteTarget?.kind === "company"
+            ? members.length > 0
+              ? `Excluir "${company.name}" e seus ${members.length} funcionário(s)? Os acessos serão removidos.`
+              : `Excluir "${company.name}"?`
+            : deleteTarget?.kind === "member"
+              ? `Remover o acesso de "${deleteTarget.member.name}" (${deleteTarget.member.email})?`
+              : ""
+        }
+        target={
+          deleteTarget?.kind === "company"
+            ? `empresa "${company.name}" (${members.length} funcionário(s))`
+            : deleteTarget?.kind === "member"
+              ? `funcionário "${deleteTarget.member.name}" <${deleteTarget.member.email}> da empresa "${company.name}"`
+              : ""
+        }
+        confirmLabel={deleteTarget?.kind === "company" ? "Excluir empresa" : "Remover funcionário"}
+        onConfirmed={() =>
+          deleteTarget?.kind === "company"
+            ? performDeleteCompany()
+            : deleteTarget?.kind === "member"
+              ? performDeleteMember(deleteTarget.member)
+              : undefined
+        }
       />
     </div>
   );

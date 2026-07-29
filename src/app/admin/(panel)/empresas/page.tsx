@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
   ChevronRight,
   Plus,
+  Search,
   Users,
 } from "lucide-react";
 import { AdminPageHeader, EmptyState, Panel } from "@/components/admin/AdminPrimitives";
@@ -18,6 +19,25 @@ import { useAdminStore } from "@/lib/admin/store";
 export default function EmpresasPage() {
   const store = useAdminStore();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return store.companies;
+    // CNPJ: compara também sem pontuação (digitar "11222333" acha "11.222.333/…").
+    const qDigits = q.replace(/[^0-9a-z]/g, "");
+    return store.companies.filter((c) => {
+      const cnpj = (c.cnpj ?? "").toLowerCase();
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.segment.toLowerCase().includes(q) ||
+        c.contactName.toLowerCase().includes(q) ||
+        c.contactEmail.toLowerCase().includes(q) ||
+        cnpj.includes(q) ||
+        (qDigits.length > 0 && cnpj.replace(/[^0-9a-z]/g, "").includes(qDigits))
+      );
+    });
+  }, [store.companies, query]);
 
   return (
     <div className="mx-auto flex max-w-[1180px] flex-col gap-6">
@@ -32,6 +52,20 @@ export default function EmpresasPage() {
         }
       />
 
+      {store.companies.length > 0 ? (
+        <div className="relative flex h-10 items-center rounded-regular border border-border-subtle bg-background-elevated transition-colors focus-within:border-foreground-subtitle">
+          <Search aria-hidden className="ml-3 h-4 w-4 text-foreground-muted" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nome, segmento, CNPJ ou contato..."
+            aria-label="Buscar empresas"
+            className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
+          />
+        </div>
+      ) : null}
+
       {store.companies.length === 0 ? (
         <EmptyState
           icon={Building2}
@@ -43,9 +77,15 @@ export default function EmpresasPage() {
             </Button>
           }
         />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={Search}
+          title="Nenhuma empresa encontrada"
+          description="Ajuste a busca para encontrar a empresa."
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {store.companies.map((company) => {
+          {filtered.map((company) => {
             const members = store.membersForCompany(company.id);
             const activeCount = members.filter((m) => m.status === "active").length;
             const occupancy = company.seats
