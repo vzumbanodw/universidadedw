@@ -72,8 +72,11 @@
   --text-placeholder: var(--grey-300);
   --text-disabled: var(--grey-500);
   --text-success: var(--green-success);
-  --text-error: var(--red-error);
-  --text-warning: var(--orange-warning);
+  /* Erro/aviso: tons escurecidos para contraste WCAG AAA (≥7:1) tanto sobre
+     os fundos tintados (--background-error/-warning) quanto sobre branco.
+     Os primitivos --red-error/--orange-warning seguem em bordas e fundos. */
+  --text-error: #7F1D1D;
+  --text-warning: #78350F;
   --text-information: var(--blue-information);
 
   /* ---------- Semantic — Border ---------- */
@@ -93,8 +96,8 @@
   --icon-muted: var(--grey-500);
   --icon-disabled: var(--grey-500);
   --icon-success: var(--green-success);
-  --icon-error: var(--red-error);
-  --icon-warning: var(--orange-warning);
+  --icon-error: #7F1D1D;
+  --icon-warning: #78350F;
   --icon-information: var(--blue-information);
 
   /* ---------- Ring / Focus ---------- */
@@ -144,7 +147,9 @@
   --text-placeholder: #4A5B71;
   --text-disabled: #506379;
   --text-success: #3DD9B5;
-  --text-error: #FF7A6E;
+  /* Erro: clareado para contraste AAA (≥7:1) sobre --background-error e
+     superfícies elevadas. O aviso (#F7B544) já é AAA no escuro. */
+  --text-error: #FF9A90;
   --text-warning: #F7B544;
   --text-information: #6C90FF;
 
@@ -165,7 +170,7 @@
   --icon-muted: #7F92A8;
   --icon-disabled: #3A506A;
   --icon-success: #3DD9B5;
-  --icon-error: #FF7A6E;
+  --icon-error: #FF9A90;
   --icon-warning: #F7B544;
   --icon-information: #6C90FF;
 

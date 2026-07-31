@@ -146,12 +146,12 @@ export function CompanyFormDialog({ open, onClose, company }: CompanyFormDialogP
         }
       >
         <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-2.5 rounded-regular border border-border-warning bg-background-warning px-3.5 py-3">
+          <div className="flex items-start gap-2.5 rounded-regular border border-border-error/60 bg-background-error px-3.5 py-3">
             <TriangleAlert
-              className="mt-0.5 h-4 w-4 shrink-0 text-foreground-warning"
+              className="mt-0.5 h-4 w-4 shrink-0 text-icon-error"
               aria-hidden
             />
-            <p className="text-[13px] leading-relaxed text-foreground-warning">
+            <p className="text-[13px] leading-relaxed text-foreground-error">
               Duplicar é permitido (há casos específicos que precisam disso),
               mas confirme que não é um cadastro repetido por engano.
             </p>
