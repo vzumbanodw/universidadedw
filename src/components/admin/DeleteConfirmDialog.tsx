@@ -36,26 +36,26 @@ export function DeleteConfirmDialog({
   confirmLabel,
   onConfirmed,
 }: Props) {
-  const [operatorName, setOperatorName] = useState("");
+  const [operatorName, setOperatorName] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setOperatorName("");
     setPassword("");
     setError(null);
     setBusy(false);
+    // Quem confirma é o operador LOGADO (conta individual ou master).
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { name?: string } | null) => setOperatorName(data?.name ?? null))
+      .catch(() => setOperatorName(null));
   }, [open]);
 
   async function handleConfirm() {
-    if (!operatorName.trim()) {
-      setError("Informe o seu nome.");
-      return;
-    }
     if (!password) {
-      setError("Informe a senha do administrador.");
+      setError("Informe a sua senha.");
       return;
     }
     setError(null);
@@ -64,7 +64,7 @@ export function DeleteConfirmDialog({
       const res = await fetch("/api/admin/confirm-delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ operatorName: operatorName.trim(), password, target }),
+        body: JSON.stringify({ password, target }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -119,27 +119,31 @@ export function DeleteConfirmDialog({
             aria-hidden
           />
           <p className="text-[13px] leading-relaxed text-foreground-error">
-            Esta ação não pode ser desfeita. Por segurança, identifique-se e
-            confirme com a senha do administrador — a exclusão fica registrada.
+            Esta ação não pode ser desfeita. Por segurança, confirme com a sua
+            senha — a exclusão fica registrada no histórico
+            {operatorName ? (
+              <>
+                {" "}em nome de{" "}
+                <strong className="font-semibold">{operatorName}</strong>
+              </>
+            ) : null}
+            .
           </p>
         </div>
 
         <Input
-          label="Seu nome"
-          required
-          value={operatorName}
-          onChange={(e) => setOperatorName(e.target.value)}
-          placeholder="Quem está removendo?"
-          autoComplete="off"
-        />
-        <Input
-          label="Senha do administrador"
+          label="Sua senha"
           required
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
           autoComplete="off"
+          hint={
+            operatorName === "Master"
+              ? "Sessão master: use a senha padrão do administrador."
+              : "A senha da sua conta de administrador."
+          }
         />
       </div>
     </Modal>

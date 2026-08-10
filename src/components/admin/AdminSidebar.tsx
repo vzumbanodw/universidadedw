@@ -11,6 +11,7 @@ import {
   Award,
   Inbox,
   BarChart3,
+  History,
   Settings,
   Megaphone,
   ArrowLeft,
@@ -57,6 +58,7 @@ const SECTIONS: NavSection[] = [
     label: "Análise",
     items: [
       { label: "Relatórios", href: "/admin/relatorios", icon: BarChart3 },
+      { label: "Histórico", href: "/admin/historico", icon: History },
       { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
     ],
   },

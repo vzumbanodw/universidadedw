@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import {
   createSupabaseServiceClient,
   hasServiceRole,
 } from "@/lib/supabase/server";
 import { generatePassword } from "@/lib/auth/passwords";
+import { getAdminSession, logAdminAction } from "@/lib/auth/admin-users.server";
 
 /**
  * Gestão de contas de aluno pelo operador. Todas as operações exigem o cookie
@@ -15,11 +15,6 @@ import { generatePassword } from "@/lib/auth/passwords";
  *         Retorna { email, password, userId } para o operador entregar ao aluno.
  * DELETE → remove a conta (`?userId=`).
  */
-
-async function isOperator(): Promise<boolean> {
-  const session = (await cookies()).get("admin_session")?.value;
-  return session === "ok";
-}
 
 function serviceUnavailable() {
   return NextResponse.json(
@@ -32,7 +27,8 @@ function serviceUnavailable() {
 }
 
 export async function POST(request: Request) {
-  if (!(await isOperator())) {
+  const session = await getAdminSession();
+  if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!hasServiceRole()) return serviceUnavailable();
@@ -57,6 +53,10 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    await logAdminAction(
+      session,
+      `Redefiniu a senha de acesso do aluno ${body.email ?? body.userId}`,
+    );
     return NextResponse.json({
       ok: true,
       action: "reset",
@@ -95,6 +95,10 @@ export async function POST(request: Request) {
     );
   }
 
+  await logAdminAction(
+    session,
+    `Criou o acesso do aluno ${email}${body.name ? ` (${body.name})` : ""}`,
+  );
   return NextResponse.json({
     ok: true,
     action: "create",
@@ -105,7 +109,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!(await isOperator())) {
+  if (!(await getAdminSession())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!hasServiceRole()) return serviceUnavailable();

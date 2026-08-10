@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { MediaField } from "@/components/admin/MediaField";
 import { useAdminStore } from "@/lib/admin/store";
 import { createId } from "@/lib/admin/options";
+import { logAction } from "@/lib/admin/audit-client";
 import { stripCnpj } from "@/lib/validators/cnpj";
 import type { Company } from "@/types/admin";
 
@@ -100,6 +101,7 @@ export function CompanyFormDialog({ open, onClose, company }: CompanyFormDialogP
     };
 
     store.upsertCompany(next);
+    logAction(`${company ? "Editou" : "Cadastrou"} a empresa "${next.name}"`);
     onClose();
   }
 

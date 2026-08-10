@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useAdminStore } from "@/lib/admin/store";
 import { createId } from "@/lib/admin/options";
+import { logAction } from "@/lib/admin/audit-client";
 import type { CompanyMember } from "@/types/admin";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,6 +62,7 @@ export function MemberFormDialog({ open, onClose, companyId, member }: MemberFor
 
     const jobTitleValue = jobTitle.trim() || undefined;
 
+    const companyName = store.companies.find((c) => c.id === companyId)?.name ?? companyId;
     if (member) {
       store.upsertMember({
         ...member,
@@ -68,6 +70,7 @@ export function MemberFormDialog({ open, onClose, companyId, member }: MemberFor
         email: trimmedEmail,
         jobTitle: jobTitleValue,
       });
+      logAction(`Editou o funcionário "${trimmedName}" (${trimmedEmail}) da empresa "${companyName}"`);
     } else {
       store.upsertMember({
         id: createId("mb"),
@@ -78,6 +81,7 @@ export function MemberFormDialog({ open, onClose, companyId, member }: MemberFor
         status: "invited",
         createdAt: new Date().toISOString(),
       });
+      logAction(`Cadastrou o funcionário "${trimmedName}" (${trimmedEmail}) na empresa "${companyName}"`);
     }
     onClose();
   }

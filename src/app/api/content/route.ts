@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getAdminSession } from "@/lib/auth/admin-users.server";
 import { readContent, writeContent } from "@/lib/content/store.server";
 import type { AdminState } from "@/lib/admin/seed";
 
@@ -13,8 +13,7 @@ export async function GET() {
 
 /** Escrita: somente operador autenticado. Substitui o documento inteiro. */
 export async function PUT(request: Request) {
-  const session = (await cookies()).get("admin_session")?.value;
-  if (session !== "ok") {
+  if (!(await getAdminSession())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -2,13 +2,14 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Lock, ShieldCheck } from "lucide-react";
+import { GraduationCap, Lock, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FormError } from "@/components/ui/FormError";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,10 +22,10 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
       if (!res.ok) {
-        setError("Senha incorreta. Tente novamente.");
+        setError("E-mail ou senha incorretos. Tente novamente.");
         return;
       }
       router.replace("/admin");
@@ -64,11 +65,23 @@ export default function AdminLoginPage() {
           {error ? <FormError message={error} /> : null}
 
           <Input
-            type="password"
-            label="Senha do operador"
-            placeholder="••••••••"
+            type="email"
+            label="E-mail"
+            placeholder="voce@dataweb.com.br"
             autoFocus
+            autoComplete="email"
+            startIcon={<Mail className="h-4 w-4" />}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="[&_label]:text-white/70"
+          />
+
+          <Input
+            type="password"
+            label="Senha"
+            placeholder="••••••••"
             required
+            autoComplete="current-password"
             startIcon={<Lock className="h-4 w-4" />}
             value={password}
             onChange={(e) => setPassword(e.target.value)}

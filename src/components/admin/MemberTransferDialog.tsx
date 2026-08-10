@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { useAdminStore } from "@/lib/admin/store";
+import { logAction } from "@/lib/admin/audit-client";
 import type { CompanyMember } from "@/types/admin";
 
 type Props = {
@@ -52,6 +53,9 @@ export function MemberTransferDialog({ open, member, onClose }: Props) {
     if (!member || !target) return;
     setBusy(true);
     store.upsertMember({ ...member, companyId: target.id });
+    logAction(
+      `Moveu o funcionário "${member.name}" (${member.email}) da empresa "${from?.name ?? "—"}" para "${target.name}"`,
+    );
     onClose();
   }
 

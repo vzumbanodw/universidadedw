@@ -1,14 +1,28 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Menu, ShieldCheck, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { mockUser } from "@/data/mock-user";
 import { AdminStoreProvider } from "@/lib/admin/store";
 import { AdminSidebar } from "./AdminSidebar";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [operatorName, setOperatorName] = useState("Operador");
+
+  // Identidade do operador logado (conta individual ou "Master").
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { name?: string } | null) => {
+        if (active && data?.name) setOperatorName(data.name);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <AdminStoreProvider>
@@ -51,13 +65,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <div className="ml-auto flex items-center gap-3">
                   <span className="hidden text-right leading-tight sm:block">
                     <span className="block text-[12.5px] font-semibold text-foreground-heading">
-                      {mockUser.firstName}
+                      {operatorName}
                     </span>
                     <span className="block text-[11px] text-foreground-muted">
                       Administrador
                     </span>
                   </span>
-                  <Avatar name={mockUser.name} size="md" ring />
+                  <Avatar name={operatorName} size="md" ring />
                 </div>
               </div>
             </header>

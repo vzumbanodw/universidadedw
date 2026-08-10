@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { reviewAccessRequest } from "@/lib/content/store.server";
 import { sendAccessApprovedEmail } from "@/lib/email/mailer.server";
+import { getAdminSession, logAdminAction } from "@/lib/auth/admin-users.server";
 
 /**
  * Endpoint do OPERADOR (cookie `admin_session`): aprova ou recusa uma
@@ -9,8 +9,8 @@ import { sendAccessApprovedEmail } from "@/lib/email/mailer.server";
  * funcionário em si é feita no cliente (store), pelo fluxo normal de membros.
  */
 export async function POST(request: Request) {
-  const session = (await cookies()).get("admin_session")?.value;
-  if (session !== "ok") {
+  const session = await getAdminSession();
+  if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -42,6 +42,15 @@ export async function POST(request: Request) {
       // Confirmação com o link pessoal de criação de senha, depois da resposta.
       const { name, email, activationToken } = updated;
       after(() => sendAccessApprovedEmail({ name, email, activationToken }));
+    }
+    if (updated) {
+      const verb = action === "approve" ? "Aprovou" : "Recusou";
+      after(() =>
+        logAdminAction(
+          session,
+          `${verb} a solicitação de acesso de "${updated.name}" (${updated.email})`,
+        ),
+      );
     }
     // O token de ativação só circula no e-mail do solicitante — nunca no browser.
     return NextResponse.json({

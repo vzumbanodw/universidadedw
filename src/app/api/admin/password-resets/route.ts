@@ -1,10 +1,10 @@
 import { after, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import {
   listPasswordResetRequests,
   reviewPasswordResetRequest,
 } from "@/lib/content/password-resets.server";
 import { sendPasswordResetApprovedEmail } from "@/lib/email/mailer.server";
+import { getAdminSession, logAdminAction } from "@/lib/auth/admin-users.server";
 
 /**
  * Gestão das solicitações de redefinição de senha pelo OPERADOR (backoffice).
@@ -15,13 +15,8 @@ import { sendPasswordResetApprovedEmail } from "@/lib/email/mailer.server";
  *        nova senha — o usuário do Auth é preservado, o progresso não se perde.
  */
 
-async function isOperator(): Promise<boolean> {
-  const session = (await cookies()).get("admin_session")?.value;
-  return session === "ok";
-}
-
 export async function GET() {
-  if (!(await isOperator())) {
+  if (!(await getAdminSession())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const requests = await listPasswordResetRequests();
@@ -29,7 +24,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!(await isOperator())) {
+  const session = await getAdminSession();
+  if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -59,6 +55,10 @@ export async function POST(request: Request) {
       const { email, activationToken } = updated;
       after(() => sendPasswordResetApprovedEmail({ email, activationToken }));
     }
+    const verb = action === "approve" ? "Aprovou" : "Recusou";
+    after(() =>
+      logAdminAction(session, `${verb} a redefinição de senha de ${updated.email}`),
+    );
     // O token de ativação só circula no e-mail do aluno — nunca no browser.
     return NextResponse.json({
       ok: true,

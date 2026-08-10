@@ -1,41 +1,47 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import {
+  getAdminSession,
+  logAdminAction,
+  verifyAdminLogin,
+} from "@/lib/auth/admin-users.server";
 
 /**
- * Confirmação de EXCLUSÃO (aluno ou empresa) no backoffice: exige o nome de
- * quem está removendo e a senha do administrador (ADMIN_PASSWORD), validada
- * AQUI no servidor. Cada confirmação gera uma linha de auditoria nos logs do
- * servidor (visível nos logs da Vercel em produção).
+ * Confirmação de EXCLUSÃO (aluno ou empresa) no backoffice: o operador LOGADO
+ * confirma digitando a própria senha (validada no servidor) — sessão master
+ * confirma com a ADMIN_PASSWORD. A exclusão fica no histórico nominal
+ * (`admin_audit_log`) com quem removeu, o quê e quando.
  */
 
-const PASSWORD = process.env.ADMIN_PASSWORD ?? "dataweb";
+const MASTER_PASSWORD = process.env.ADMIN_PASSWORD ?? "dataweb";
 
 export async function POST(request: Request) {
-  const session = (await cookies()).get("admin_session")?.value;
-  if (session !== "ok") {
+  const session = await getAdminSession();
+  if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let body: { operatorName?: string; password?: string; target?: string };
+  let body: { password?: string; target?: string };
   try {
     body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Requisição inválida." }, { status: 400 });
   }
 
-  const operatorName = (body.operatorName ?? "").trim();
+  const password = body.password ?? "";
   const target = (body.target ?? "").trim();
-
-  if (!operatorName) {
-    return NextResponse.json({ error: "Informe o seu nome." }, { status: 400 });
+  if (!password) {
+    return NextResponse.json({ error: "Informe a sua senha." }, { status: 400 });
   }
-  if (body.password !== PASSWORD) {
+
+  const valid =
+    session.id === "master"
+      ? password === MASTER_PASSWORD
+      : Boolean(await verifyAdminLogin(session.email, password));
+
+  if (!valid) {
     return NextResponse.json({ error: "Senha incorreta." }, { status: 401 });
   }
 
-  console.warn(
-    `[auditoria] EXCLUSÃO confirmada por "${operatorName}" — alvo: ${target || "(não informado)"} — em ${new Date().toISOString()}`,
-  );
-
+  await logAdminAction(session, `Excluiu ${target || "(alvo não informado)"}`);
   return NextResponse.json({ ok: true });
 }

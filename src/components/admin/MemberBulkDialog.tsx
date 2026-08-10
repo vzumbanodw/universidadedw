@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useAdminStore } from "@/lib/admin/store";
 import { createId } from "@/lib/admin/options";
+import { logAction } from "@/lib/admin/audit-client";
 import { cn } from "@/lib/utils";
 import type { CompanyMember } from "@/types/admin";
 
@@ -151,6 +152,9 @@ export function MemberBulkDialog({ open, onClose, companyId }: MemberBulkDialogP
       createdAt: now,
     }));
     store.addMembers(members);
+    logAction(
+      `Importou ${members.length} funcionário(s) na empresa "${company?.name ?? companyId}"`,
+    );
     onClose();
   }
 

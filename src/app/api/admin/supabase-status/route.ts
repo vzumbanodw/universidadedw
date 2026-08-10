@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getAdminSession } from "@/lib/auth/admin-users.server";
 import {
   hasServiceRole,
   isSupabaseConfigured,
@@ -14,8 +14,7 @@ export const dynamic = "force-dynamic";
  *   abra /api/admin/supabase-status após logar no backoffice.
  */
 export async function GET() {
-  const session = (await cookies()).get("admin_session")?.value;
-  if (session !== "ok") {
+  if (!(await getAdminSession())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
