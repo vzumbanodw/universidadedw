@@ -15,26 +15,62 @@ import { AdminPageHeader, EmptyState, Panel } from "@/components/admin/AdminPrim
 import { CourseFormDialog } from "@/components/admin/CourseFormDialog";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Select } from "@/components/ui/Select";
 import { useAdminStore } from "@/lib/admin/store";
 import { formatMinutes } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { AdminCourse } from "@/types/admin";
+
+type SortBy = "recent" | "oldest" | "alpha";
+type StatusFilter = "all" | "published" | "draft";
+
+const SORT_OPTIONS: { value: SortBy; label: string }[] = [
+  { value: "recent", label: "Mais recentes" },
+  { value: "oldest", label: "Mais antigos" },
+  { value: "alpha", label: "Ordem alfabética (A–Z)" },
+];
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "Todos os status" },
+  { value: "published", label: "Publicados" },
+  { value: "draft", label: "Rascunhos" },
+];
 
 export default function CursosPage() {
   const store = useAdminStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdminCourse | null>(null);
   const [query, setQuery] = useState("");
+  // Padrão "Mais recentes": os últimos cursos cadastrados aparecem no topo.
+  const [sortBy, setSortBy] = useState<SortBy>("recent");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return store.courses.filter((c) =>
-      q
-        ? c.title.toLowerCase().includes(q) ||
-          c.categoryName.toLowerCase().includes(q)
-        : true,
-    );
-  }, [store.courses, query]);
+    // A ordem do array é a ordem de CADASTRO (cursos novos entram no fim) —
+    // o índice original serve de linha do tempo para recentes/antigos.
+    const rows = store.courses
+      .map((course, index) => ({ course, index }))
+      .filter(({ course }) => {
+        if (q && !course.title.toLowerCase().includes(q) && !course.categoryName.toLowerCase().includes(q)) {
+          return false;
+        }
+        if (categoryFilter !== "all" && course.categoryId !== categoryFilter) return false;
+        if (statusFilter === "published" && !course.published) return false;
+        if (statusFilter === "draft" && course.published) return false;
+        return true;
+      });
+
+    rows.sort((a, b) => {
+      if (sortBy === "alpha") {
+        return a.course.title.localeCompare(b.course.title, "pt-BR", { sensitivity: "base" });
+      }
+      return sortBy === "recent" ? b.index - a.index : a.index - b.index;
+    });
+
+    return rows.map(({ course }) => course);
+  }, [store.courses, query, sortBy, categoryFilter, statusFilter]);
 
   function openNew() {
     setEditing(null);
@@ -74,17 +110,43 @@ export default function CursosPage() {
         }
       />
 
-      {/* Busca */}
-      <div className="relative flex h-10 items-center rounded-regular border border-border-subtle bg-background-elevated transition-colors focus-within:border-foreground-subtitle">
-        <Search aria-hidden className="ml-3 h-4 w-4 text-foreground-muted" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar cursos por título ou aplicação..."
-          aria-label="Buscar cursos"
-          className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
-        />
+      {/* Busca + filtros */}
+      <div className="flex flex-col gap-3">
+        <div className="relative flex h-10 items-center rounded-regular border border-border-subtle bg-background-elevated transition-colors focus-within:border-foreground-subtitle">
+          <Search aria-hidden className="ml-3 h-4 w-4 text-foreground-muted" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar cursos por título ou aplicação..."
+            aria-label="Buscar cursos"
+            className="flex-1 bg-transparent px-3 text-[13.5px] text-foreground placeholder:text-foreground-muted outline-none"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Select
+            label="Ordenar por"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            options={SORT_OPTIONS}
+          />
+          <Select
+            label="Aplicação"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            options={[
+              { value: "all", label: "Todas as aplicações" },
+              ...store.categories.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
+          <Select
+            label="Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            options={STATUS_OPTIONS}
+          />
+        </div>
       </div>
 
       {store.categories.length === 0 ? (

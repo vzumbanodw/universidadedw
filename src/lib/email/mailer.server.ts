@@ -2,10 +2,10 @@ import nodemailer from "nodemailer";
 
 /**
  * E-mails transacionais da plataforma, enviados por SMTP — o remetente visível
- * é SEMPRE mcoser@dataweb.com.br (`MAIL_FROM`):
+ * é SEMPRE eiglesias@dataweb.com.br (`MAIL_FROM`):
  *
  *   1. Aviso interno de NOVA SOLICITAÇÃO (acesso / esqueci minha senha),
- *      para mcoser@dataweb.com.br e eiglesias@dataweb.com.br.
+ *      para eiglesias@dataweb.com.br.
  *   2. Confirmação ao solicitante quando a conta é APROVADA no backoffice.
  *
  * Provedor recomendado: RESEND (https://resend.com) com o domínio
@@ -15,11 +15,11 @@ import nodemailer from "nodemailer";
  *   SMTP_HOST=smtp.resend.com
  *   SMTP_USER=resend
  *   SMTP_PASSWORD=<chave da API do Resend, começa com "re_">
- *   MAIL_FROM=mcoser@dataweb.com.br
+ *   MAIL_FROM=eiglesias@dataweb.com.br
  *
  * Qualquer outro provedor SMTP funciona com as mesmas variáveis. Opcionais:
  *   BACKOFFICE_NOTIFY_EMAIL   destinos do aviso interno, separados por vírgula
- *                             (default: mcoser@ e eiglesias@)
+ *                             (default: eiglesias@)
  *   SMTP_PORT / SMTP_SECURE   default 465 com TLS
  *   MAIL_FROM                 remetente visível (default: SMTP_USER)
  *   APP_URL                   URL pública do app, para links nos e-mails
@@ -28,7 +28,7 @@ import nodemailer from "nodemailer";
  * `after()` (depois da resposta) e qualquer erro aqui é apenas logado.
  */
 
-const DEFAULT_NOTIFY_TO = ["mcoser@dataweb.com.br", "eiglesias@dataweb.com.br"];
+const DEFAULT_NOTIFY_TO = ["eiglesias@dataweb.com.br"];
 
 function notifyRecipients(): string[] {
   const env = (process.env.BACKOFFICE_NOTIFY_EMAIL ?? "").trim();

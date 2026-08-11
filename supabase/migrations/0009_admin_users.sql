@@ -12,7 +12,7 @@
 --    edição de empresas e usuários, aprovações/recusas de solicitações,
 --    exclusões etc. Visível na seção "Histórico" do backoffice.
 --
--- >>> AO RODAR, o resultado exibido no final são OS 5 LINKS DE ATIVAÇÃO <<<
+-- >>> AO RODAR, o resultado exibido no final são OS LINKS DE ATIVAÇÃO   <<<
 -- >>> (um por administrador) — copie e envie para cada pessoa.          <<<
 --
 -- A senha master (ADMIN_PASSWORD) continua funcionando como acesso de
@@ -56,7 +56,7 @@ create index if not exists admin_audit_log_created_idx
 alter table public.admin_audit_log enable row level security;
 
 -- -----------------------------------------------------------------------------
--- As 5 contas iniciais, cada uma com token de ativação aleatório.
+-- As 4 contas iniciais, cada uma com token de ativação aleatório.
 -- Rodar de novo não duplica nem regenera tokens já criados.
 -- -----------------------------------------------------------------------------
 insert into public.admin_users (id, name, email, activation_token)
@@ -64,8 +64,7 @@ values
   ('adm_evellyn',   'Evellyn',   'eiglesias@dataweb.com.br', encode(gen_random_bytes(24), 'hex')),
   ('adm_lucas',     'Lucas',     'ldomingues@dataweb.com.br', encode(gen_random_bytes(24), 'hex')),
   ('adm_fabio',     'Fabio',     'fdcastel@dataweb.com.br',   encode(gen_random_bytes(24), 'hex')),
-  ('adm_christian', 'Christian', 'cluzzi@dataweb.com.br',     encode(gen_random_bytes(24), 'hex')),
-  ('adm_mariana',   'Mariana',   'mcoser@dataweb.com.br',     encode(gen_random_bytes(24), 'hex'))
+  ('adm_christian', 'Christian', 'cluzzi@dataweb.com.br',     encode(gen_random_bytes(24), 'hex'))
 on conflict (id) do nothing;
 
 -- -----------------------------------------------------------------------------
