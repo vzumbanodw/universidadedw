@@ -9,7 +9,7 @@ import { MediaField } from "@/components/admin/MediaField";
 import { useAdminStore } from "@/lib/admin/store";
 import { createId } from "@/lib/admin/options";
 import { logAction } from "@/lib/admin/audit-client";
-import { stripCnpj } from "@/lib/validators/cnpj";
+import { formatCnpj, isValidCnpj, stripCnpj } from "@/lib/validators/cnpj";
 import type { Company } from "@/types/admin";
 
 type CompanyFormDialogProps = {
@@ -112,6 +112,10 @@ export function CompanyFormDialog({ open, onClose, company }: CompanyFormDialogP
     }
     if (form.contactEmail && !EMAIL_RE.test(form.contactEmail)) {
       setError("E-mail de contato inválido.");
+      return;
+    }
+    if (form.cnpj.trim() && !isValidCnpj(form.cnpj)) {
+      setError("CNPJ inválido. Confira os dígitos.");
       return;
     }
 
@@ -226,9 +230,11 @@ export function CompanyFormDialog({ open, onClose, company }: CompanyFormDialogP
           />
           <Input
             label="CNPJ"
-            placeholder="00.000.000/0001-00"
+            placeholder="00.000.000/0000-00"
             value={form.cnpj}
-            onChange={(e) => update("cnpj", e.target.value)}
+            onChange={(e) => update("cnpj", formatCnpj(e.target.value))}
+            maxLength={18}
+            autoComplete="off"
           />
         </div>
 
