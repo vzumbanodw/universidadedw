@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Check, Copy, Link2, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Check, Copy, Link2, Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +18,13 @@ type Props = {
 };
 
 type Mode = "existing" | "create";
+
+/**
+ * Duas etapas: primeiro CONFERIR os dados (nada é aprovado aqui), depois
+ * VINCULAR a empresa e aprovar. Evita aprovação acidental de quem só abriu a
+ * solicitação para checar as informações.
+ */
+type Step = "review" | "assign";
 
 function normalizeName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
@@ -52,6 +59,7 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
   const store = useAdminStore();
   const [companyId, setCompanyId] = useState("");
   const [mode, setMode] = useState<Mode>("existing");
+  const [step, setStep] = useState<Step>("review");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Link de criação de senha do aprovado — exibido para o operador entregar
@@ -71,6 +79,7 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
     setBusy(false);
     setApprovedLink(null);
     setCopied(false);
+    setStep("review");
     if (matched) {
       setMode("existing");
       setCompanyId(matched.id);
@@ -225,6 +234,92 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
     );
   }
 
+  // ---- Etapa 1: conferência dos dados (nada é aprovado aqui) ---------------
+  if (step === "review" && request) {
+    return (
+      <Modal
+        open={open}
+        onClose={onClose}
+        size="md"
+        title="Conferir solicitação"
+        description="Revise os dados enviados. Nada é aprovado nesta etapa — para aprovar, avance para a próxima."
+        footer={
+          <>
+            <Button variant="ghost" onClick={onClose}>
+              Fechar
+            </Button>
+            <Button
+              onClick={() => setStep("assign")}
+              rightIcon={<ArrowRight className="h-4 w-4" />}
+            >
+              Continuar para aprovação
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <dl className="flex flex-col gap-2">
+            <DetailRow label="Nome" value={request.name} strong />
+            <DetailRow label="E-mail" value={request.email} />
+            <DetailRow label="Empresa informada" value={request.companyName || "—"} />
+            <DetailRow label="CNPJ" value={request.cnpj || "—"} />
+            <DetailRow
+              label="Solicitado em"
+              value={
+                request.createdAt
+                  ? new Intl.DateTimeFormat("pt-BR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                      timeZone: "America/Sao_Paulo",
+                    }).format(new Date(request.createdAt))
+                  : "—"
+              }
+            />
+          </dl>
+
+          <div
+            className={
+              matched
+                ? "flex items-start gap-2.5 rounded-regular border border-border-success/40 bg-background-success px-3.5 py-3"
+                : "flex items-start gap-2.5 rounded-regular border border-border-subtle bg-background-subtle/50 px-3.5 py-3"
+            }
+          >
+            <Building2
+              className={
+                matched
+                  ? "mt-0.5 h-4 w-4 shrink-0 text-foreground-success"
+                  : "mt-0.5 h-4 w-4 shrink-0 text-foreground-muted"
+              }
+              aria-hidden
+            />
+            <p
+              className={
+                matched
+                  ? "text-[13px] leading-relaxed text-foreground-success"
+                  : "text-[13px] leading-relaxed text-foreground-muted"
+              }
+            >
+              {matched ? (
+                <>
+                  Empresa localizada no sistema:{" "}
+                  <strong className="font-semibold">{matched.name}</strong>
+                  {matched.cnpj ? ` · CNPJ ${matched.cnpj}` : ""}.
+                </>
+              ) : canCreate ? (
+                <>
+                  Nenhuma empresa cadastrada corresponde a esses dados — na
+                  próxima etapa você pode criá-la a partir da solicitação.
+                </>
+              ) : (
+                <>A solicitação não informou empresa. Escolha uma na próxima etapa.</>
+              )}
+            </p>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
   const selectedCompany = store.companies.find((c) => c.id === companyId);
   const approveDisabled =
     mode === "create" ? !canCreate : store.companies.length === 0 || !companyId;
@@ -242,8 +337,12 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
       }
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
+          <Button
+            variant="ghost"
+            onClick={() => setStep("review")}
+            leftIcon={<ArrowLeft className="h-4 w-4" />}
+          >
+            Voltar
           </Button>
           <Button
             onClick={handleApprove}
@@ -383,5 +482,32 @@ function ModeOption({
         <span className="block text-[12px] leading-snug text-foreground-muted">{subtitle}</span>
       </span>
     </button>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-regular border border-border-subtle bg-background-subtle/40 px-3.5 py-2.5 sm:flex-row sm:items-baseline sm:gap-3">
+      <dt className="shrink-0 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted sm:w-[132px]">
+        {label}
+      </dt>
+      <dd
+        className={
+          strong
+            ? "break-words text-[14px] font-semibold text-foreground-heading"
+            : "break-words text-[13.5px] text-foreground-heading"
+        }
+      >
+        {value}
+      </dd>
+    </div>
   );
 }

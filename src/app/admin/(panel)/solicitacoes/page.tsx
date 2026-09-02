@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Inbox, KeyRound, Mail, X } from "lucide-react";
+import { Check, Eye, Inbox, KeyRound, Mail, X } from "lucide-react";
 import { AdminPageHeader, EmptyState, Panel } from "@/components/admin/AdminPrimitives";
 import { AccessRequestApproveDialog } from "@/components/admin/AccessRequestApproveDialog";
 import { ResetLinkDialog } from "@/components/admin/ResetLinkDialog";
@@ -131,7 +131,7 @@ export default function SolicitacoesPage() {
       <AdminPageHeader
         breadcrumb={[{ label: "Backoffice", href: "/admin" }, { label: "Solicitações" }]}
         title="Solicitações de acesso"
-        description="Pedidos enviados pela tela de login do Universidade. Aprove vinculando a pessoa a uma empresa cadastrada, ou recuse."
+        description="Pedidos enviados pela tela de login do Universidade. Revise os dados, aprove vinculando a pessoa a uma empresa cadastrada, ou recuse."
       />
 
       <section className="flex flex-col gap-3">
@@ -174,10 +174,10 @@ export default function SolicitacoesPage() {
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
-                    leftIcon={<Check className="h-4 w-4" />}
+                    leftIcon={<Eye className="h-4 w-4" />}
                     onClick={() => setApproving(req)}
                   >
-                    Aprovar
+                    Revisar
                   </Button>
                   <Button
                     size="sm"

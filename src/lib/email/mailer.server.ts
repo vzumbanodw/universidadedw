@@ -6,7 +6,7 @@ import { appUrl } from "@/lib/app-url";
  * é SEMPRE eiglesias@dataweb.com.br (`MAIL_FROM`):
  *
  *   1. Aviso interno de NOVA SOLICITAÇÃO (acesso / esqueci minha senha),
- *      para eiglesias@dataweb.com.br.
+ *      para marketing@dataweb.com.br e comercial@dataweb.com.br.
  *   2. Confirmação ao solicitante quando a conta é APROVADA no backoffice.
  *
  * Provedor recomendado: RESEND (https://resend.com) com o domínio
@@ -20,7 +20,7 @@ import { appUrl } from "@/lib/app-url";
  *
  * Qualquer outro provedor SMTP funciona com as mesmas variáveis. Opcionais:
  *   BACKOFFICE_NOTIFY_EMAIL   destinos do aviso interno, separados por vírgula
- *                             (default: eiglesias@)
+ *                             (default: marketing@ e comercial@)
  *   SMTP_PORT / SMTP_SECURE   default 465 com TLS
  *   MAIL_FROM                 remetente visível (default: SMTP_USER)
  *   APP_URL                   URL pública do app, para links nos e-mails
@@ -29,7 +29,7 @@ import { appUrl } from "@/lib/app-url";
  * `after()` (depois da resposta) e qualquer erro aqui é apenas logado.
  */
 
-const DEFAULT_NOTIFY_TO = ["eiglesias@dataweb.com.br"];
+const DEFAULT_NOTIFY_TO = ["marketing@dataweb.com.br", "comercial@dataweb.com.br"];
 
 function notifyRecipients(): string[] {
   const env = (process.env.BACKOFFICE_NOTIFY_EMAIL ?? "").trim();
