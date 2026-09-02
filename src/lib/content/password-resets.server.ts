@@ -163,6 +163,45 @@ export async function reviewPasswordResetRequest(
   return data ? fromRow(data) : null;
 }
 
+/**
+ * Reenvio: devolve e-mail e token do link de uma redefinição JÁ APROVADA,
+ * gerando o token na PRÓPRIA linha caso ela ainda não tenha um (solicitações
+ * aprovadas antes dos links por token). Não cria nova solicitação nem altera
+ * o status — a linha continua "aguardando o aluno".
+ */
+export async function ensureResetLinkToken(
+  id: string,
+): Promise<{ email: string; token: string } | null> {
+  if (!isSupabaseConfigured() || !hasServiceRole()) return null;
+
+  const { data, error } = await db()
+    .from("password_reset_requests")
+    .select("id, email, status, activation_token")
+    .eq("id", id)
+    .eq("status", "approved")
+    .maybeSingle();
+  if (error) {
+    if (isMissingTable(error)) throw new Error(MIGRATION_HINT);
+    throw new Error(`Falha ao localizar a solicitação: ${error.message}`);
+  }
+  if (!data) return null;
+
+  const email = String(data.email ?? "");
+  const existing = data.activation_token ? String(data.activation_token) : "";
+  if (existing) return { email, token: existing };
+
+  const token = newActivationToken();
+  const update = await db()
+    .from("password_reset_requests")
+    .update({ activation_token: token })
+    .eq("id", id)
+    .eq("status", "approved");
+  if (update.error) {
+    throw new Error(`Falha ao gerar o link: ${update.error.message}`);
+  }
+  return { email, token };
+}
+
 /** Solicitação APROVADA (não usada) para o e-mail, se houver. */
 export async function findApprovedResetRequest(
   email: string,

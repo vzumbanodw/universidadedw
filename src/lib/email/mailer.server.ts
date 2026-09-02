@@ -150,7 +150,7 @@ export async function sendAccessApprovedEmail(input: {
   name: string;
   email: string;
   activationToken?: string;
-}): Promise<void> {
+}): Promise<SendResult> {
   const link = activationLink(input.activationToken);
   const comoEntrar = link
     ? `Para começar, crie sua senha de acesso no link abaixo — ele é pessoal e já está vinculado ao seu e-mail:\n${link}`
@@ -166,7 +166,7 @@ export async function sendAccessApprovedEmail(input: {
     "Qualquer dúvida, é só responder este e-mail.",
   ];
 
-  await sendMail({
+  return sendMail({
     to: input.email,
     subject: "Seu acesso à Universidade Dataweb foi aprovado",
     text: lines.join("\n"),
@@ -180,7 +180,7 @@ export async function sendAccessApprovedEmail(input: {
 export async function sendPasswordResetApprovedEmail(input: {
   email: string;
   activationToken?: string;
-}): Promise<void> {
+}): Promise<SendResult> {
   const link = activationLink(input.activationToken);
   const comoRedefinir = link
     ? `Defina a sua nova senha no link abaixo — ele é pessoal e já está vinculado ao seu e-mail:\n${link}`
@@ -197,7 +197,7 @@ export async function sendPasswordResetApprovedEmail(input: {
     "Qualquer dúvida, é só responder este e-mail.",
   ];
 
-  await sendMail({
+  return sendMail({
     to: input.email,
     subject: "Redefinição de senha aprovada — Universidade Dataweb",
     text: lines.join("\n"),

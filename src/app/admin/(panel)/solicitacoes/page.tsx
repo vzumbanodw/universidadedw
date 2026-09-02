@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, Inbox, KeyRound, Mail, X } from "lucide-react";
 import { AdminPageHeader, EmptyState, Panel } from "@/components/admin/AdminPrimitives";
 import { AccessRequestApproveDialog } from "@/components/admin/AccessRequestApproveDialog";
+import { ResetLinkDialog } from "@/components/admin/ResetLinkDialog";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +41,8 @@ export default function SolicitacoesPage() {
   const [approving, setApproving] = useState<AccessRequest | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [resets, setResets] = useState<PasswordResetRequest[]>([]);
+  // Reenvio do link para quem está "aguardando o aluno".
+  const [resendTarget, setResendTarget] = useState<PasswordResetRequest | null>(null);
   const [resetBusyId, setResetBusyId] = useState<string | null>(null);
 
   const pending = store.accessRequests.filter((r) => r.status === "pending");
@@ -266,9 +269,21 @@ export default function SolicitacoesPage() {
                     Solicitado em {formatDate(req.createdAt)}
                   </p>
                 </div>
-                <Badge variant={RESET_STATUS_VARIANT[req.status]} size="sm" dot>
-                  {PASSWORD_RESET_STATUS_LABEL[req.status]}
-                </Badge>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge variant={RESET_STATUS_VARIANT[req.status]} size="sm" dot>
+                    {PASSWORD_RESET_STATUS_LABEL[req.status]}
+                  </Badge>
+                  {req.status === "approved" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      leftIcon={<Mail className="h-4 w-4" />}
+                      onClick={() => setResendTarget(req)}
+                    >
+                      Reenviar link
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ))}
           </Panel>
@@ -309,6 +324,12 @@ export default function SolicitacoesPage() {
           </Panel>
         </section>
       ) : null}
+
+      <ResetLinkDialog
+        open={resendTarget !== null}
+        request={resendTarget}
+        onClose={() => setResendTarget(null)}
+      />
 
       <AccessRequestApproveDialog
         open={Boolean(approving)}
