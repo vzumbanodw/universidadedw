@@ -242,7 +242,7 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
         onClose={onClose}
         size="md"
         title="Conferir solicitação"
-        description="Revise os dados enviados. Nada é aprovado nesta etapa — para aprovar, avance para a próxima."
+        description="Verifique as informações antes de aprovar a solicitação."
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>
