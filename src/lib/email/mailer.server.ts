@@ -37,19 +37,25 @@ function notifyRecipients(): string[] {
   return env.split(",").map((e) => e.trim()).filter(Boolean);
 }
 
-/** Envio de baixo nível. Nunca lança: falha de SMTP é logada e engolida. */
+export type SendResult = { ok: boolean; error?: string };
+
+/**
+ * Envio de baixo nível. Nunca lança — devolve o resultado para quem precisa
+ * mostrá-lo ao operador (envio manual, teste); os envios automáticos apenas
+ * ignoram o retorno e a falha fica no log.
+ */
 async function sendMail(opts: {
   to: string | string[];
   subject: string;
   text: string;
-}): Promise<void> {
+}): Promise<SendResult> {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASSWORD;
   if (!user || !pass) {
-    console.warn(
-      `[email] SMTP_USER/SMTP_PASSWORD não configurados; e-mail "${opts.subject}" não enviado.`,
-    );
-    return;
+    const error =
+      "SMTP_USER/SMTP_PASSWORD não configurados no servidor. Cadastre as variáveis no ambiente do deploy.";
+    console.warn(`[email] ${error} E-mail "${opts.subject}" não enviado.`);
+    return { ok: false, error };
   }
 
   const transport = nodemailer.createTransport({
@@ -69,8 +75,10 @@ async function sendMail(opts: {
       subject: opts.subject,
       text: opts.text,
     });
+    return { ok: true };
   } catch (error) {
     console.error(`[email] Falha ao enviar "${opts.subject}":`, error);
+    return { ok: false, error: (error as Error).message ?? "Falha no envio." };
   } finally {
     transport.close();
   }
@@ -220,44 +228,49 @@ export function emailStatus(): {
 }
 
 /**
- * Envio de teste (backoffice → Configurações). Diferente dos demais, informa
- * se falhou, para o operador diagnosticar sem depender dos logs do servidor.
+ * Envio de teste (backoffice → Configurações). Informa o erro real, para o
+ * operador diagnosticar sem depender dos logs do servidor.
  */
-export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASSWORD;
-  if (!user || !pass) {
-    return {
-      ok: false,
-      error:
-        "SMTP_USER/SMTP_PASSWORD não configurados no servidor. Cadastre as variáveis no ambiente do deploy.",
-    };
-  }
-
-  const transport = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.resend.com",
-    port: Number(process.env.SMTP_PORT || 465),
-    secure: (process.env.SMTP_SECURE ?? "true") !== "false",
-    auth: { user, pass },
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 15_000,
+export async function sendTestEmail(to: string): Promise<SendResult> {
+  return sendMail({
+    to,
+    subject: "Teste de envio — Universidade Dataweb",
+    text:
+      "Este é um e-mail de teste do backoffice da Universidade Dataweb.\n\n" +
+      "Se você recebeu esta mensagem, o envio automático está funcionando. " +
+      'Caso ela tenha caído no spam, marque como "não é spam" para os próximos chegarem na caixa de entrada.',
   });
+}
 
-  try {
-    await transport.sendMail({
-      from: `Universidade Dataweb <${process.env.MAIL_FROM || user}>`,
-      to,
-      subject: "Teste de envio — Universidade Dataweb",
-      text:
-        "Este é um e-mail de teste do backoffice da Universidade Dataweb.\n\n" +
-        "Se você recebeu esta mensagem, o envio automático está funcionando. " +
-        "Caso ela tenha caído no spam, marque como \"não é spam\" para os próximos chegarem na caixa de entrada.",
-    });
-    return { ok: true };
-  } catch (error) {
-    return { ok: false, error: (error as Error).message ?? "Falha no envio." };
-  } finally {
-    transport.close();
-  }
+/* -------------------------------------------------------------------------- */
+/* 5. Link de criação de senha enviado pelo operador                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Envia ao aluno o link de definição de senha gerado pelo operador no
+ * backoffice. Reporta o resultado: o operador precisa saber na hora se o
+ * e-mail saiu ou se deve entregar o link por outro canal.
+ */
+export async function sendStudentAccessLinkEmail(input: {
+  name?: string;
+  email: string;
+  link: string;
+}): Promise<SendResult> {
+  const lines = [
+    input.name ? `Olá, ${input.name}!` : "Olá!",
+    "",
+    "Seu acesso à Universidade Dataweb está liberado.",
+    "",
+    "Crie a sua senha pelo link abaixo — ele é pessoal e já está vinculado ao seu e-mail:",
+    input.link,
+    "",
+    "Depois de criar a senha, você entra direto na plataforma.",
+    "Qualquer dúvida, é só responder este e-mail.",
+  ];
+
+  return sendMail({
+    to: input.email,
+    subject: "Seu acesso à Universidade Dataweb — crie sua senha",
+    text: lines.join("\n"),
+  });
 }

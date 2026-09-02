@@ -106,12 +106,21 @@ export async function createPasswordResetRequest(email: string): Promise<boolean
  * (não depende de solicitação nem de e-mail entregue): grava uma redefinição
  * já APROVADA com token, que a pessoa usa em /primeiro-acesso?token=... para
  * definir a senha. Serve tanto para quem ainda não tem conta (primeiro acesso)
- * quanto para quem esqueceu a senha. Retorna o token, ou null se indisponível.
+ * quanto para quem esqueceu a senha. Gerar um novo link invalida o anterior.
+ * Retorna o token, ou null se indisponível.
  */
 export async function createApprovedAccessLink(email: string): Promise<string | null> {
   if (!isSupabaseConfigured() || !hasServiceRole()) return null;
   const normalized = email.trim().toLowerCase();
   const token = newActivationToken();
+
+  // Só o link mais recente vale: invalida os anteriores ainda abertos para
+  // este e-mail (evita links antigos circulando e confusão sobre qual usar).
+  await db()
+    .from("password_reset_requests")
+    .update({ status: "used" })
+    .ilike("email", normalized)
+    .eq("status", "approved");
 
   const { error } = await db().from("password_reset_requests").insert({
     id: newRequestId(),

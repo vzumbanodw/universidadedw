@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, KeyRound, Link2, RefreshCw, ShieldCheck } from "lucide-react";
+import { Check, Copy, KeyRound, Link2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -20,8 +20,8 @@ type Credentials = { email: string; password: string };
  * Libera o acesso do aluno pelo backoffice, de duas formas:
  *
  *  1. LINK DE SENHA (recomendado): gera um link pessoal para o aluno criar a
- *     própria senha. O operador entrega por WhatsApp/e-mail — não depende da
- *     entrega automática do e-mail da plataforma.
+ *     própria senha. O operador envia pelo próprio sistema (botão "Enviar por
+ *     e-mail") ou entrega por WhatsApp copiando o link.
  *  2. SENHA AUTOMÁTICA: cria a conta com uma senha gerada, para o operador
  *     repassar. Também serve para redefinir a senha de quem já tem conta.
  */
@@ -32,6 +32,9 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
   const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [accessLink, setAccessLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Envio do link por e-mail para o próprio aluno.
+  const [sendingMail, setSendingMail] = useState(false);
+  const [mailResult, setMailResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -40,6 +43,8 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
     setCredentials(null);
     setAccessLink(null);
     setCopied(false);
+    setMailResult(null);
+    setSendingMail(false);
   }, [open, member]);
 
   if (!member) return null;
@@ -116,6 +121,46 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
       setError("Falha de rede. Tente novamente.");
     } finally {
       setLoading(null);
+    }
+  }
+
+  /**
+   * Envia o link por e-mail ao próprio aluno. Gera um link novo no servidor
+   * (o anterior é invalidado), então a tela passa a exibir exatamente o que
+   * foi enviado.
+   */
+  async function sendByEmail() {
+    if (!member) return;
+    setSendingMail(true);
+    setMailResult(null);
+    try {
+      const res = await fetch("/api/admin/members/access-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: member.email, name: member.name, send: true }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        link?: string;
+        token?: string;
+        sent?: boolean;
+        sendError?: string;
+      };
+      if (!res.ok || !data.ok || !data.token) {
+        setMailResult({ ok: false, message: data.error ?? "Não foi possível enviar." });
+        return;
+      }
+      setAccessLink(data.link || `${siteOrigin()}/primeiro-acesso?token=${data.token}`);
+      setMailResult(
+        data.sent
+          ? { ok: true, message: `Link enviado para ${member.email}. Peça para conferir também o spam.` }
+          : { ok: false, message: data.sendError ?? "O e-mail não pôde ser enviado — copie o link e envie por outro canal." },
+      );
+    } catch {
+      setMailResult({ ok: false, message: "Falha de rede. Tente novamente." });
+    } finally {
+      setSendingMail(false);
     }
   }
 
@@ -218,6 +263,13 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
+                onClick={sendByEmail}
+                loading={sendingMail}
+                leftIcon={<Mail className="h-4 w-4" />}
+              >
+                Enviar por e-mail
+              </Button>
+              <Button
                 variant="outline"
                 onClick={() => copyText(accessLink)}
                 leftIcon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -228,6 +280,19 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
                 Copiar mensagem pronta
               </Button>
             </div>
+
+            {mailResult ? (
+              <p
+                role="alert"
+                className={
+                  mailResult.ok
+                    ? "rounded-regular border border-border-success/40 bg-background-success px-3.5 py-2.5 text-[13px] text-foreground-success"
+                    : "rounded-regular border border-border-error/60 bg-background-error px-3.5 py-2.5 text-[13px] text-foreground-error"
+                }
+              >
+                {mailResult.message}
+              </p>
+            ) : null}
           </div>
         ) : credentials ? (
           <div className="flex flex-col gap-3">
@@ -258,9 +323,9 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
               <strong className="font-semibold text-foreground-heading">
                 Gerar link de senha
               </strong>{" "}
-              — o aluno abre o link e escolhe a própria senha. Funciona tanto para
-              o primeiro acesso quanto para quem esqueceu a senha, e não depende
-              do e-mail automático chegar.
+              — o aluno abre o link e escolhe a própria senha. Depois de gerar,
+              você pode enviá-lo por e-mail para a pessoa com um clique ou
+              copiar e mandar por outro canal (WhatsApp, por exemplo).
             </p>
             <p>
               <strong className="font-semibold text-foreground-heading">
