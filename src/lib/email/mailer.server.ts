@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { appUrl } from "@/lib/app-url";
 
 /**
  * E-mails transacionais da plataforma, enviados por SMTP — o remetente visível
@@ -34,10 +35,6 @@ function notifyRecipients(): string[] {
   const env = (process.env.BACKOFFICE_NOTIFY_EMAIL ?? "").trim();
   if (!env) return DEFAULT_NOTIFY_TO;
   return env.split(",").map((e) => e.trim()).filter(Boolean);
-}
-
-function appUrl(): string {
-  return (process.env.APP_URL ?? "").trim().replace(/\/$/, "");
 }
 
 /** Envio de baixo nível. Nunca lança: falha de SMTP é logada e engolida. */
@@ -197,4 +194,70 @@ export async function sendPasswordResetApprovedEmail(input: {
     subject: "Redefinição de senha aprovada — Universidade Dataweb",
     text: lines.join("\n"),
   });
+}
+
+/* -------------------------------------------------------------------------- */
+/* 4. Diagnóstico: e-mail de teste + status da configuração                    */
+/* -------------------------------------------------------------------------- */
+
+/** Situação atual do envio de e-mails (exibida em Configurações). */
+export function emailStatus(): {
+  smtpConfigured: boolean;
+  host: string;
+  from: string;
+  notifyTo: string[];
+  appUrl: string;
+} {
+  const user = process.env.SMTP_USER ?? "";
+  const pass = process.env.SMTP_PASSWORD ?? "";
+  return {
+    smtpConfigured: Boolean(user && pass),
+    host: process.env.SMTP_HOST || "smtp.resend.com",
+    from: process.env.MAIL_FROM || user,
+    notifyTo: notifyRecipients(),
+    appUrl: appUrl(),
+  };
+}
+
+/**
+ * Envio de teste (backoffice → Configurações). Diferente dos demais, informa
+ * se falhou, para o operador diagnosticar sem depender dos logs do servidor.
+ */
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASSWORD;
+  if (!user || !pass) {
+    return {
+      ok: false,
+      error:
+        "SMTP_USER/SMTP_PASSWORD não configurados no servidor. Cadastre as variáveis no ambiente do deploy.",
+    };
+  }
+
+  const transport = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "smtp.resend.com",
+    port: Number(process.env.SMTP_PORT || 465),
+    secure: (process.env.SMTP_SECURE ?? "true") !== "false",
+    auth: { user, pass },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
+  });
+
+  try {
+    await transport.sendMail({
+      from: `Universidade Dataweb <${process.env.MAIL_FROM || user}>`,
+      to,
+      subject: "Teste de envio — Universidade Dataweb",
+      text:
+        "Este é um e-mail de teste do backoffice da Universidade Dataweb.\n\n" +
+        "Se você recebeu esta mensagem, o envio automático está funcionando. " +
+        "Caso ela tenha caído no spam, marque como \"não é spam\" para os próximos chegarem na caixa de entrada.",
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message ?? "Falha no envio." };
+  } finally {
+    transport.close();
+  }
 }

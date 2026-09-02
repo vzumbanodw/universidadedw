@@ -102,6 +102,32 @@ export async function createPasswordResetRequest(email: string): Promise<boolean
 }
 
 /**
+ * Gera um LINK DE ACESSO para um aluno, criado pelo OPERADOR no backoffice
+ * (não depende de solicitação nem de e-mail entregue): grava uma redefinição
+ * já APROVADA com token, que a pessoa usa em /primeiro-acesso?token=... para
+ * definir a senha. Serve tanto para quem ainda não tem conta (primeiro acesso)
+ * quanto para quem esqueceu a senha. Retorna o token, ou null se indisponível.
+ */
+export async function createApprovedAccessLink(email: string): Promise<string | null> {
+  if (!isSupabaseConfigured() || !hasServiceRole()) return null;
+  const normalized = email.trim().toLowerCase();
+  const token = newActivationToken();
+
+  const { error } = await db().from("password_reset_requests").insert({
+    id: newRequestId(),
+    email: normalized,
+    status: "approved",
+    reviewed_at: new Date().toISOString(),
+    activation_token: token,
+  });
+  if (error) {
+    if (isMissingTable(error)) throw new Error(MIGRATION_HINT);
+    throw new Error(`Falha ao gerar o link de acesso: ${error.message}`);
+  }
+  return token;
+}
+
+/**
  * Aprova ou recusa uma solicitação pendente (backoffice). Na aprovação, gera
  * o token do link de redefinição enviado por e-mail ao aluno.
  */

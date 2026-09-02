@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Check, Sparkles } from "lucide-react";
+import { Building2, Check, Copy, Link2, Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -54,6 +54,10 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
   const [mode, setMode] = useState<Mode>("existing");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Link de criação de senha do aprovado — exibido para o operador entregar
+  // manualmente (não depende de o e-mail automático chegar).
+  const [approvedLink, setApprovedLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const matched = useMemo(
     () => (request ? matchCompany(request, store.companies) : null),
@@ -65,6 +69,8 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
     if (!open) return;
     setError(null);
     setBusy(false);
+    setApprovedLink(null);
+    setCopied(false);
     if (matched) {
       setMode("existing");
       setCompanyId(matched.id);
@@ -114,7 +120,12 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: request.id, action: "approve", companyId: targetId }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        activationLink?: string | null;
+        activationToken?: string | null;
+      };
       if (!res.ok || !data.ok) {
         setError(data.error ?? "Falha ao aprovar.");
         setBusy(false);
@@ -145,11 +156,73 @@ export function AccessRequestApproveDialog({ open, request, onClose }: Props) {
         companyId: targetId,
         reviewedAt: new Date().toISOString(),
       });
-      onClose();
+
+      const link =
+        data.activationLink ||
+        (data.activationToken
+          ? `${typeof window !== "undefined" ? window.location.origin : ""}/primeiro-acesso?token=${data.activationToken}`
+          : "");
+      if (link) {
+        setApprovedLink(link);
+        setBusy(false);
+      } else {
+        onClose();
+      }
     } catch {
       setError("Falha de rede.");
       setBusy(false);
     }
+  }
+
+  async function copyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      /* clipboard indisponível: o operador copia manualmente */
+    }
+  }
+
+  // ---- Aprovada: entrega o link de criação de senha ao operador -------------
+  if (approvedLink && request) {
+    const mensagem =
+      `Olá, ${request.name}! Seu acesso à Universidade Dataweb foi aprovado. ` +
+      `Crie a sua senha por este link: ${approvedLink}`;
+    return (
+      <Modal
+        open={open}
+        onClose={onClose}
+        size="md"
+        title="Solicitação aprovada"
+        description={`${request.name} foi vinculado(a) à empresa e recebeu o e-mail com o link de criação de senha.`}
+        footer={<Button onClick={onClose}>Concluir</Button>}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="rounded-regular border border-border-success/40 bg-background-success px-3.5 py-3">
+            <p className="flex items-center gap-2 text-[12.5px] font-medium text-foreground-success">
+              <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+              Se o e-mail não chegar, envie este link direto para a pessoa:
+            </p>
+            <p className="mt-2 break-all rounded-small bg-background-elevated px-2.5 py-2 font-mono text-[12px] text-foreground-heading">
+              {approvedLink}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => copyText(approvedLink)}
+              leftIcon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            >
+              {copied ? "Copiado" : "Copiar link"}
+            </Button>
+            <Button variant="ghost" onClick={() => copyText(mensagem)}>
+              Copiar mensagem pronta
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    );
   }
 
   const selectedCompany = store.companies.find((c) => c.id === companyId);

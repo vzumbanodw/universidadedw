@@ -2,6 +2,7 @@ import { after, NextResponse } from "next/server";
 import { reviewAccessRequest } from "@/lib/content/store.server";
 import { sendAccessApprovedEmail } from "@/lib/email/mailer.server";
 import { getAdminSession, logAdminAction } from "@/lib/auth/admin-users.server";
+import { studentPasswordLink } from "@/lib/app-url";
 
 /**
  * Endpoint do OPERADOR (cookie `admin_session`): aprova ou recusa uma
@@ -52,10 +53,18 @@ export async function POST(request: Request) {
         ),
       );
     }
-    // O token de ativação só circula no e-mail do solicitante — nunca no browser.
+    // O token não vai no objeto da solicitação (não é persistido no browser),
+    // mas o LINK é devolvido ao operador: quando o e-mail não chega, ele
+    // entrega o link direto ao aluno (WhatsApp, e-mail próprio etc.).
+    const activationLink =
+      action === "approve" && updated?.activationToken
+        ? studentPasswordLink(updated.activationToken)
+        : null;
     return NextResponse.json({
       ok: true,
       request: updated ? { ...updated, activationToken: undefined } : updated,
+      activationLink,
+      activationToken: action === "approve" ? (updated?.activationToken ?? null) : null,
     });
   } catch (error) {
     return NextResponse.json(

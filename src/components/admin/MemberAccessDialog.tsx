@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
+import { Check, Copy, KeyRound, Link2, RefreshCw, ShieldCheck } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -16,28 +16,40 @@ type MemberAccessDialogProps = {
 
 type Credentials = { email: string; password: string };
 
+/**
+ * Libera o acesso do aluno pelo backoffice, de duas formas:
+ *
+ *  1. LINK DE SENHA (recomendado): gera um link pessoal para o aluno criar a
+ *     própria senha. O operador entrega por WhatsApp/e-mail — não depende da
+ *     entrega automática do e-mail da plataforma.
+ *  2. SENHA AUTOMÁTICA: cria a conta com uma senha gerada, para o operador
+ *     repassar. Também serve para redefinir a senha de quem já tem conta.
+ */
 export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialogProps) {
   const store = useAdminStore();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<"password" | "link" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const [accessLink, setAccessLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setLoading(false);
+    setLoading(null);
     setError(null);
     setCredentials(null);
+    setAccessLink(null);
     setCopied(false);
   }, [open, member]);
 
   if (!member) return null;
 
   const hasAccount = Boolean(member.authUserId);
+  const hasResult = Boolean(credentials || accessLink);
 
   async function submit(reset: boolean) {
     if (!member) return;
-    setLoading(true);
+    setLoading("password");
     setError(null);
     try {
       const res = await fetch("/api/admin/students", {
@@ -78,13 +90,36 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
     } catch {
       setError("Falha de rede. Tente novamente.");
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }
 
-  async function copyCredentials() {
-    if (!credentials) return;
-    const text = `Universidade Dataweb\nLogin: ${credentials.email}\nSenha: ${credentials.password}\nAcesse: ${siteOrigin()}/login`;
+  /** Gera o link pessoal para o próprio aluno definir a senha. */
+  async function generateLink() {
+    if (!member) return;
+    setLoading("link");
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/members/access-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: member.email }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; link?: string; token?: string };
+      if (!res.ok || !data.ok || !data.token) {
+        setError(data.error ?? "Não foi possível gerar o link.");
+        return;
+      }
+      // Usa o link do servidor; sem APP_URL configurada, monta com a origem atual.
+      setAccessLink(data.link || `${siteOrigin()}/primeiro-acesso?token=${data.token}`);
+    } catch {
+      setError("Falha de rede. Tente novamente.");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function copyText(text: string) {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -94,36 +129,49 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
     }
   }
 
+  const linkMessage = accessLink
+    ? `Olá, ${member.name}! Seu acesso à Universidade Dataweb está liberado. ` +
+      `Crie a sua senha por este link: ${accessLink}`
+    : "";
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       size="md"
       title="Acesso do aluno"
-      description="Crie o login da Universidade e entregue as credenciais ao usuário. Não há cadastro pelo app do aluno."
+      description="Libere o acesso enviando um link para o aluno criar a própria senha, ou gere uma senha automática para entregar a ele."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
             Fechar
           </Button>
-          {!credentials ? (
-            hasAccount ? (
+          {!hasResult ? (
+            <>
               <Button
-                onClick={() => submit(true)}
-                loading={loading}
-                leftIcon={<RefreshCw className="h-4 w-4" />}
+                variant="outline"
+                onClick={() => submit(hasAccount)}
+                loading={loading === "password"}
+                disabled={loading !== null}
+                leftIcon={
+                  hasAccount ? (
+                    <RefreshCw className="h-4 w-4" />
+                  ) : (
+                    <KeyRound className="h-4 w-4" />
+                  )
+                }
               >
-                Redefinir senha
+                {hasAccount ? "Gerar nova senha" : "Criar com senha automática"}
               </Button>
-            ) : (
               <Button
-                onClick={() => submit(false)}
-                loading={loading}
-                leftIcon={<KeyRound className="h-4 w-4" />}
+                onClick={generateLink}
+                loading={loading === "link"}
+                disabled={loading !== null}
+                leftIcon={<Link2 className="h-4 w-4" />}
               >
-                Criar acesso
+                Gerar link de senha
               </Button>
-            )
+            </>
           ) : null}
         </>
       }
@@ -157,7 +205,31 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
           </p>
         ) : null}
 
-        {credentials ? (
+        {accessLink ? (
+          <div className="flex flex-col gap-3">
+            <div className="rounded-regular border border-border-success/40 bg-background-success px-3.5 py-3">
+              <p className="text-[12.5px] font-medium text-foreground-success">
+                Link gerado. Envie para {member.name} — ao abrir, a pessoa cria a
+                própria senha e já entra na plataforma.
+              </p>
+              <p className="mt-2 break-all rounded-small bg-background-elevated px-2.5 py-2 font-mono text-[12px] text-foreground-heading">
+                {accessLink}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => copyText(accessLink)}
+                leftIcon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              >
+                {copied ? "Copiado" : "Copiar link"}
+              </Button>
+              <Button variant="ghost" onClick={() => copyText(linkMessage)}>
+                Copiar mensagem pronta
+              </Button>
+            </div>
+          </div>
+        ) : credentials ? (
           <div className="flex flex-col gap-3">
             <div className="rounded-regular border border-border-success/40 bg-background-success px-3.5 py-3">
               <p className="text-[12.5px] font-medium text-foreground-success">
@@ -170,18 +242,33 @@ export function MemberAccessDialog({ open, onClose, member }: MemberAccessDialog
             </div>
             <Button
               variant="outline"
-              onClick={copyCredentials}
+              onClick={() =>
+                copyText(
+                  `Universidade Dataweb\nLogin: ${credentials.email}\nSenha: ${credentials.password}\nAcesse: ${siteOrigin()}/login`,
+                )
+              }
               leftIcon={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             >
               {copied ? "Copiado" : "Copiar credenciais"}
             </Button>
           </div>
         ) : (
-          <p className="text-[13px] leading-relaxed text-foreground-muted">
-            {hasAccount
-              ? "Este aluno já possui acesso. Você pode gerar uma nova senha caso ele tenha esquecido a anterior."
-              : "Ao criar o acesso, uma senha será gerada automaticamente. Você poderá copiá-la em seguida."}
-          </p>
+          <div className="flex flex-col gap-2 text-[13px] leading-relaxed text-foreground-muted">
+            <p>
+              <strong className="font-semibold text-foreground-heading">
+                Gerar link de senha
+              </strong>{" "}
+              — o aluno abre o link e escolhe a própria senha. Funciona tanto para
+              o primeiro acesso quanto para quem esqueceu a senha, e não depende
+              do e-mail automático chegar.
+            </p>
+            <p>
+              <strong className="font-semibold text-foreground-heading">
+                {hasAccount ? "Gerar nova senha" : "Criar com senha automática"}
+              </strong>{" "}
+              — o sistema cria uma senha e você a repassa ao aluno.
+            </p>
+          </div>
         )}
       </div>
     </Modal>

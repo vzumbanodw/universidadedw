@@ -35,6 +35,7 @@ export default function ConfiguracoesPage() {
 
       {store.ready ? (
         <>
+          <EmailDiagnosticsCard />
           <PointsSettingsCard />
           <CertificateSettingsCard />
           <MaturityLevelsCard />
@@ -42,6 +43,158 @@ export default function ConfiguracoesPage() {
       ) : (
         <Panel className="px-5 py-10 text-center text-foreground-muted">Carregando…</Panel>
       )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Diagnóstico de e-mail                                                       */
+/* -------------------------------------------------------------------------- */
+
+type EmailStatus = {
+  smtpConfigured: boolean;
+  host: string;
+  from: string;
+  notifyTo: string[];
+  appUrl: string;
+};
+
+/**
+ * Mostra como o envio de e-mails está configurado no servidor e permite um
+ * envio de teste — para diagnosticar rapidamente quando um aluno diz que não
+ * recebeu o e-mail de acesso.
+ */
+function EmailDiagnosticsCard() {
+  const [status, setStatus] = useState<EmailStatus | null>(null);
+  const [to, setTo] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/email-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: EmailStatus | null) => {
+        if (active && data) setStatus(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function sendTest() {
+    setSending(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/admin/email-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: to.trim() }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; to?: string };
+      setResult(
+        res.ok && data.ok
+          ? { ok: true, message: `E-mail de teste enviado para ${data.to}. Confira a caixa de entrada e o spam.` }
+          : { ok: false, message: data.error ?? "Falha no envio." },
+      );
+    } catch {
+      setResult({ ok: false, message: "Falha de rede." });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Panel className="flex flex-col gap-4 p-5">
+      <div>
+        <h2 className="text-[15px] font-semibold tracking-tight text-foreground-heading">
+          Envio de e-mails
+        </h2>
+        <p className="mt-0.5 text-[13px] text-foreground-muted">
+          Avisos de novas solicitações e links de criação de senha. Use o teste
+          abaixo quando alguém disser que não recebeu o e-mail.
+        </p>
+      </div>
+
+      {status ? (
+        <dl className="grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-2">
+          <StatusRow
+            label="Servidor de e-mail"
+            value={status.smtpConfigured ? `Configurado (${status.host})` : "NÃO configurado"}
+            tone={status.smtpConfigured ? "ok" : "error"}
+          />
+          <StatusRow
+            label="Endereço público do app"
+            value={status.appUrl || "NÃO configurado (links não são gerados)"}
+            tone={status.appUrl ? "ok" : "error"}
+          />
+          <StatusRow label="Remetente" value={status.from || "—"} />
+          <StatusRow label="Avisos internos para" value={status.notifyTo.join(", ") || "—"} />
+        </dl>
+      ) : (
+        <p className="text-[13px] text-foreground-muted">Carregando…</p>
+      )}
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <Input
+            label="Enviar e-mail de teste para"
+            type="email"
+            placeholder="voce@dataweb.com.br"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            hint="Em branco: envia para o e-mail da sua conta de administrador."
+          />
+        </div>
+        <Button variant="outline" onClick={sendTest} loading={sending}>
+          Enviar teste
+        </Button>
+      </div>
+
+      {result ? (
+        <p
+          role="alert"
+          className={cn(
+            "rounded-regular border px-3.5 py-2.5 text-[13px]",
+            result.ok
+              ? "border-border-success/40 bg-background-success text-foreground-success"
+              : "border-border-error/60 bg-background-error text-foreground-error",
+          )}
+        >
+          {result.message}
+        </p>
+      ) : null}
+    </Panel>
+  );
+}
+
+function StatusRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "error";
+}) {
+  return (
+    <div className="rounded-regular border border-border-subtle bg-background-subtle/40 px-3.5 py-2.5">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          "mt-0.5 break-all text-[13px]",
+          tone === "ok"
+            ? "font-medium text-foreground-heading"
+            : tone === "error"
+              ? "font-semibold text-foreground-error"
+              : "text-foreground-heading",
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
