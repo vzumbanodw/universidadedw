@@ -245,6 +245,7 @@ function fromCourseRow(r: Row): AdminCourse {
     promoVideoUrl: und(r.promo_video_url),
     points: r.points ?? 0,
     published: Boolean(r.published),
+    createdAt: und(r.created_at),
   };
 }
 
@@ -271,6 +272,9 @@ function toCourseRow(c: AdminCourse, i: number): Row {
     points: c.points ?? 0,
     published: c.published,
     sort_order: i,
+    // Preservado explicitamente: a gravação recria as linhas, e sem isto o
+    // default now() zeraria a data de cadastro a cada save do backoffice.
+    created_at: c.createdAt ?? new Date().toISOString(),
   };
 }
 

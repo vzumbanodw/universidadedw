@@ -131,6 +131,8 @@ export function CourseFormDialog({ open, onClose, course }: CourseFormDialogProp
       href: `/dashboard/cursos/${slug}`,
       coverImageUrl: form.coverImageUrl,
       published: form.published,
+      // Data de cadastro: definida uma vez, preservada nas edições.
+      createdAt: course?.createdAt ?? new Date().toISOString(),
     };
 
     store.upsertCourse(next);

@@ -32,6 +32,12 @@ export type AdminCourse = Course & {
   /** Pontos concedidos ao concluir o curso (gamificação/maturidade). */
   points?: number;
   published: boolean;
+  /**
+   * Quando o curso foi cadastrado. Preservado entre salvamentos — é a base do
+   * aviso de "novo curso" para o aluno. Cursos anteriores a este campo ficam
+   * sem data (e, por isso, nunca são anunciados como novidade).
+   */
+  createdAt?: string;
 };
 
 export type AdminLessonResource = CourseLessonResource & {

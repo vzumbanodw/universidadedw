@@ -8,18 +8,26 @@ import {
   CurrentUserProvider,
   type CurrentUserView,
 } from "@/components/auth/CurrentUserProvider";
+import {
+  NewCourseModal,
+  type AnnouncedCourse,
+} from "@/components/courses/NewCourseModal";
 
 export function DashboardShell({
   children,
   user = null,
+  newCourses = [],
 }: {
   children: ReactNode;
   user?: CurrentUserView | null;
+  /** Cursos recentes: base do aviso de novidade exibido ao aluno. */
+  newCourses?: AnnouncedCourse[];
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <CurrentUserProvider value={user}>
+    <NewCourseModal courses={newCourses} />
     <div className="min-h-screen bg-background-subtle text-foreground">
       <div className="flex min-h-screen">
         {/* Desktop sidebar */}
