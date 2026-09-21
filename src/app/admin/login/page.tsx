@@ -13,6 +13,9 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "Esqueci minha senha": envia o link de senha do backoffice por e-mail.
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -25,7 +28,8 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ email: email.trim(), password }),
       });
       if (!res.ok) {
-        setError("E-mail ou senha incorretos. Tente novamente.");
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "E-mail ou senha incorretos. Tente novamente.");
         return;
       }
       router.replace("/admin");
@@ -34,6 +38,39 @@ export default function AdminLoginPage() {
       setError("Não foi possível entrar. Tente novamente.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleRecovery() {
+    const mail = email.trim();
+    if (!mail) {
+      setError("Informe o seu e-mail para receber o link.");
+      return;
+    }
+    setError(null);
+    setRecoveryMessage(null);
+    setRecovering(true);
+    try {
+      const res = await fetch("/api/admin/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mail }),
+      });
+      const data = (await res.json()) as { ok?: boolean; sent?: boolean; error?: string };
+      if (!res.ok) {
+        setError(data.error ?? "Não foi possível enviar o link.");
+        return;
+      }
+      setRecoveryMessage(
+        data.sent
+          ? `Se ${mail} for de um administrador, o link de senha chega em instantes. Confira também o spam.`
+          : (data.error ??
+              "O e-mail não pôde ser enviado. Peça o link ao responsável pelo sistema."),
+      );
+    } catch {
+      setError("Falha de rede. Tente novamente.");
+    } finally {
+      setRecovering(false);
     }
   }
 
@@ -91,6 +128,24 @@ export default function AdminLoginPage() {
           <Button type="submit" fullWidth loading={loading} disabled={!password}>
             Entrar no backoffice
           </Button>
+
+          <button
+            type="button"
+            onClick={handleRecovery}
+            disabled={recovering}
+            className="text-center text-[12.5px] font-medium text-white/70 underline-offset-4 transition-colors hover:text-white hover:underline disabled:opacity-60"
+          >
+            {recovering ? "Enviando link…" : "Esqueci minha senha"}
+          </button>
+
+          {recoveryMessage ? (
+            <p
+              role="status"
+              className="rounded-regular border border-white/15 bg-white/[0.06] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-white/80"
+            >
+              {recoveryMessage}
+            </p>
+          ) : null}
         </form>
 
         <p className="mt-5 text-center text-[12px] text-white/40">

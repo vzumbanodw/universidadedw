@@ -42,11 +42,14 @@ export default async function AdminPrimeiroAcessoPage({
                     <ShieldCheck className="h-5 w-5 text-white" aria-hidden />
                   </span>
                   <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-foreground-heading">
-                    Crie sua senha do backoffice
+                    {admin.status === "active"
+                      ? "Defina sua nova senha"
+                      : "Crie sua senha do backoffice"}
                   </h1>
                   <p className="text-[14px] leading-relaxed text-foreground-subtitle">
-                    Olá, {admin.name}! Sua conta de administrador
-                    ({admin.email}) está pronta — defina a senha para começar.
+                    Olá, {admin.name}! {admin.status === "active"
+                      ? `Escolha a nova senha da sua conta de administrador (${admin.email}).`
+                      : `Sua conta de administrador (${admin.email}) está pronta — defina a senha para começar.`}
                   </p>
                 </div>
 

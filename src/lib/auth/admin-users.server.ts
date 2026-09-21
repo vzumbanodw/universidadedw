@@ -11,6 +11,7 @@ import {
   verifyAdminSession,
   type AdminSession,
 } from "@/lib/auth/admin-session";
+import { newActivationToken } from "@/lib/auth/activation-token";
 
 /**
  * Contas individuais de ADMINISTRADOR do backoffice (`admin_users`, migração
@@ -98,7 +99,11 @@ export async function verifyAdminLogin(
   return { id: data.id, name: data.name, email: data.email, status: data.status };
 }
 
-/** Conta pelo token de ativação (ainda pendente de senha). */
+/**
+ * Conta pelo token do link pessoal. Vale tanto para a PRIMEIRA senha quanto
+ * para REDEFINIÇÃO — o token é a prova de posse do e-mail, então o status da
+ * conta não restringe (uma conta ativa que esqueceu a senha também usa isto).
+ */
 export async function findAdminByActivationToken(
   token: string,
 ): Promise<AdminUser | null> {
@@ -107,7 +112,6 @@ export async function findAdminByActivationToken(
     .from("admin_users")
     .select("id, name, email, status")
     .eq("activation_token", token.trim())
-    .eq("status", "invited")
     .maybeSingle();
   if (error) {
     if (isMissingTable(error)) throw new Error(MIGRATION_HINT);
@@ -116,7 +120,7 @@ export async function findAdminByActivationToken(
   return data ? { id: data.id, name: data.name, email: data.email, status: data.status } : null;
 }
 
-/** Define a senha da conta convidada, ativa e invalida o token. */
+/** Define (ou redefine) a senha da conta, ativa e invalida o token usado. */
 export async function activateAdmin(
   id: string,
   password: string,
@@ -130,10 +134,58 @@ export async function activateAdmin(
       activation_token: null,
     })
     .eq("id", id)
-    .eq("status", "invited")
     .select("id")
     .maybeSingle();
   return !error && Boolean(data);
+}
+
+/**
+ * "Esqueci minha senha" do backoffice: gera um token novo para a conta do
+ * e-mail informado (invalidando o anterior) e devolve os dados para o envio
+ * do link. Retorna null quando não existe administrador com aquele e-mail.
+ */
+export async function createAdminPasswordToken(
+  email: string,
+): Promise<{ id: string; name: string; email: string; token: string } | null> {
+  if (!available()) return null;
+  const normalized = email.trim().toLowerCase();
+
+  const { data, error } = await db()
+    .from("admin_users")
+    .select("id, name, email")
+    .ilike("email", normalized)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const token = newActivationToken();
+  const update = await db()
+    .from("admin_users")
+    .update({ activation_token: token })
+    .eq("id", data.id);
+  if (update.error) return null;
+
+  return { id: data.id, name: data.name, email: data.email, token };
+}
+
+/**
+ * Estado da conta de administrador, para o login explicar o motivo real da
+ * recusa ("conta sem senha definida" ≠ "senha incorreta"). Uso interno do
+ * backoffice, com poucos operadores conhecidos.
+ */
+export async function getAdminAccountState(
+  email: string,
+): Promise<{ exists: boolean; needsPassword: boolean }> {
+  if (!available()) return { exists: false, needsPassword: false };
+  const { data, error } = await db()
+    .from("admin_users")
+    .select("status, password_hash")
+    .ilike("email", email.trim().toLowerCase())
+    .maybeSingle();
+  if (error || !data) return { exists: false, needsPassword: false };
+  return {
+    exists: true,
+    needsPassword: !data.password_hash || data.status !== "active",
+  };
 }
 
 /* -------------------------------------------------------------------------- */

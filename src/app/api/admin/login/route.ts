@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyAdminLogin } from "@/lib/auth/admin-users.server";
+import {
+  getAdminAccountState,
+  verifyAdminLogin,
+} from "@/lib/auth/admin-users.server";
 import {
   ADMIN_COOKIE,
   SESSION_HOURS,
@@ -39,6 +42,22 @@ export async function POST(request: Request) {
   }
 
   if (!identity) {
+    // Conta existe mas ainda não tem senha definida? Diz isso em vez de
+    // "senha incorreta" — era a causa de "sou admin e não consigo entrar".
+    if (mail) {
+      const state = await getAdminAccountState(mail);
+      if (state.exists && state.needsPassword) {
+        return NextResponse.json(
+          {
+            ok: false,
+            needsPassword: true,
+            error:
+              'Sua conta ainda não tem senha definida. Use "Esqueci minha senha" para receber o link por e-mail.',
+          },
+          { status: 401 },
+        );
+      }
+    }
     return NextResponse.json(
       { ok: false, error: "E-mail ou senha incorretos." },
       { status: 401 },

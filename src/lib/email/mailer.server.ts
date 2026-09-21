@@ -274,3 +274,31 @@ export async function sendStudentAccessLinkEmail(input: {
     text: lines.join("\n"),
   });
 }
+
+/* -------------------------------------------------------------------------- */
+/* 6. Senha do ADMINISTRADOR do backoffice (primeira senha / redefinição)      */
+/* -------------------------------------------------------------------------- */
+
+export async function sendAdminPasswordLinkEmail(input: {
+  name?: string;
+  email: string;
+  link: string;
+}): Promise<SendResult> {
+  const lines = [
+    input.name ? `Olá, ${input.name}!` : "Olá!",
+    "",
+    "Você pediu para definir a sua senha do backoffice da Universidade Dataweb.",
+    "",
+    "Use o link abaixo — ele é pessoal e substitui qualquer link anterior:",
+    input.link,
+    "",
+    "Depois de criar a senha, você já entra no backoffice.",
+    "Se não foi você que pediu, ignore este e-mail: nada muda até o link ser usado.",
+  ];
+
+  return sendMail({
+    to: input.email,
+    subject: "Sua senha do backoffice — Universidade Dataweb",
+    text: lines.join("\n"),
+  });
+}
