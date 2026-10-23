@@ -182,6 +182,12 @@ export type ReleaseEntry = {
   description: string;
   /** Link "Visualizar": abre a atualização dentro do sistema. Opcional. */
   viewUrl?: string;
+  /** Título curto do item, em linguagem de benefício ("Fechamento em 1 clique"). */
+  titulo?: string;
+  /** Destaca o item na página pública (abre a atualização, com mais espaço). */
+  destaque?: boolean;
+  /** Exige algo do cliente (atualizar versão, configurar algo) — sinalizado. */
+  requerAcao?: boolean;
 };
 
 /**

@@ -5,9 +5,14 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
 import { useAdminStore } from "@/lib/admin/store";
 import { RELEASE_ENTRY_TYPE_OPTIONS, createId } from "@/lib/admin/options";
+import {
+  RELEASE_PRODUCT_OPTIONS,
+  canonicalProduct,
+} from "@/lib/releases/products";
 import type {
   ReleaseEntry,
   ReleaseEntryType,
@@ -25,16 +30,22 @@ type FormState = {
   type: ReleaseEntryType;
   caso: string;
   produto: string;
+  titulo: string;
   description: string;
   viewUrl: string;
+  destaque: boolean;
+  requerAcao: boolean;
 };
 
 const EMPTY: FormState = {
   type: "melhoria",
   caso: "",
   produto: "",
+  titulo: "",
   description: "",
   viewUrl: "",
+  destaque: false,
+  requerAcao: false,
 };
 
 export function ReleaseEntryDialog({
@@ -55,13 +66,26 @@ export function ReleaseEntryDialog({
         ? {
             type: entry.type,
             caso: entry.caso,
-            produto: entry.produto,
+            produto: canonicalProduct(entry.produto),
+            titulo: entry.titulo ?? "",
             description: entry.description,
             viewUrl: entry.viewUrl ?? "",
+            destaque: Boolean(entry.destaque),
+            requerAcao: Boolean(entry.requerAcao),
           }
         : EMPTY,
     );
   }, [open, entry]);
+
+  // Catálogo oficial + o valor já gravado, quando for de fora da lista (itens
+  // antigos continuam editáveis sem perder o produto).
+  const productOptions = (() => {
+    const current = form.produto.trim();
+    const known = RELEASE_PRODUCT_OPTIONS.some((o) => o.value === current);
+    return current && !known
+      ? [...RELEASE_PRODUCT_OPTIONS, { value: current, label: `${current} (fora do catálogo)` }]
+      : RELEASE_PRODUCT_OPTIONS;
+  })();
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -79,8 +103,11 @@ export function ReleaseEntryDialog({
       type: form.type,
       caso: form.caso.trim(),
       produto: form.produto.trim(),
+      titulo: form.titulo.trim() || undefined,
       description: form.description.trim(),
       viewUrl: form.viewUrl.trim() || undefined,
+      destaque: form.destaque || undefined,
+      requerAcao: form.requerAcao || undefined,
     };
 
     const entries = entry
@@ -131,11 +158,22 @@ export function ReleaseEntryDialog({
           />
         </div>
 
-        <Input
+        <Select
           label="Produto"
-          placeholder="CRM (Novo) · Optfácil (Delphi)…"
+          required
           value={form.produto}
           onChange={(e) => update("produto", e.target.value)}
+          placeholder="Selecione o produto"
+          options={productOptions}
+          hint="Define o filtro por produto na página pública de novidades."
+        />
+
+        <Input
+          label="Título do item (opcional)"
+          placeholder="Ex.: Fechamento de caixa em um clique"
+          hint="Em linguagem de benefício. É o que o cliente lê primeiro."
+          value={form.titulo}
+          onChange={(e) => update("titulo", e.target.value)}
         />
 
         <Textarea
@@ -146,6 +184,29 @@ export function ReleaseEntryDialog({
           value={form.description}
           onChange={(e) => update("description", e.target.value)}
         />
+
+        <div className="flex flex-col gap-2.5 rounded-regular border border-border-subtle bg-background-subtle/40 px-3.5 py-3">
+          <div>
+            <Checkbox
+              label="Destacar na página de novidades"
+              checked={form.destaque}
+              onChange={(e) => update("destaque", e.target.checked)}
+            />
+            <p className="ml-6 mt-0.5 text-[12px] text-foreground-muted">
+              Aparece em “Destaques”, no topo da atualização.
+            </p>
+          </div>
+          <div>
+            <Checkbox
+              label="Requer ação do cliente"
+              checked={form.requerAcao}
+              onChange={(e) => update("requerAcao", e.target.checked)}
+            />
+            <p className="ml-6 mt-0.5 text-[12px] text-foreground-muted">
+              Sinaliza que a pessoa precisa fazer algo (atualizar, configurar).
+            </p>
+          </div>
+        </div>
 
         <Input
           label="Link de visualização (opcional)"

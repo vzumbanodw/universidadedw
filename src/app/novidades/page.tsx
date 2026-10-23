@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ArrowUpRight, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
+import { ArrowUpRight, Radio } from "lucide-react";
 import { NovidadesBrowser } from "@/components/public/NovidadesBrowser";
 import { readContent } from "@/lib/content/store.server";
-import { monthLabel } from "@/lib/admin/options";
 import type { ReleaseNote } from "@/types/admin";
 
 export const metadata: Metadata = {
   title: "Novidades & Atualizações · Dataweb",
   description:
-    "Acompanhe as novidades, melhorias e correções dos produtos Dataweb.",
+    "Acompanhe em tempo real o que lançamos, melhoramos e corrigimos nos produtos Dataweb.",
 };
 
 export const dynamic = "force-dynamic";
@@ -23,20 +21,14 @@ export default async function NovidadesPage() {
       (a, b) =>
         b.year - a.year || b.month - a.month || b.date.localeCompare(a.date),
     );
-  const latest = notes[0];
 
   return (
-    <div className="min-h-screen bg-background-subtle text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
+      <Hero notes={notes} />
 
-      <Hero count={notes.length} latest={latest} />
-
-      <main className="mx-auto w-full max-w-[1080px] px-5 pb-24 sm:px-8">
-        {notes.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <NovidadesBrowser notes={notes} />
-        )}
+      <main className="relative mx-auto w-full max-w-[1120px] px-5 pb-28 sm:px-8">
+        {notes.length === 0 ? <EmptyState /> : <NovidadesBrowser notes={notes} />}
       </main>
 
       <SiteFooter />
@@ -50,117 +42,166 @@ export default async function NovidadesPage() {
 
 function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border-subtle bg-background-elevated/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-[1080px] items-center justify-between px-5 sm:px-8">
+    <header className="absolute inset-x-0 top-0 z-50">
+      <div className="mx-auto flex h-20 w-full max-w-[1120px] items-center justify-between px-5 sm:px-8">
         <Image
           src="/logo-dataweb.png"
           alt="Dataweb"
           width={132}
           height={36}
           priority
-          className="h-7 w-auto"
+          className="h-7 w-auto brightness-0 invert"
         />
-        <nav className="flex items-center gap-5 text-[13.5px] font-medium text-foreground-muted">
-          <span className="hidden items-center gap-1.5 text-foreground-subtitle sm:inline-flex">
-            <Sparkles className="h-3.5 w-3.5 text-brand-orange" aria-hidden />
-            Novidades
-          </span>
-          <a
-            href="https://www.dataweb.com.br"
-            className="inline-flex items-center gap-1 rounded-full border border-border-default px-3.5 py-1.5 text-foreground-subtitle transition-colors hover:border-brand-primary hover:text-brand-primary"
-          >
-            Site Dataweb
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-          </a>
-        </nav>
+        <a
+          href="https://www.dataweb.com.br"
+          className="group inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-[13px] font-medium text-white/80 backdrop-blur-sm transition-colors hover:border-white/30 hover:text-white"
+        >
+          dataweb.com.br
+          <ArrowUpRight
+            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+            aria-hidden
+          />
+        </a>
       </div>
     </header>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/* Hero                                                                        */
+/* Hero — escuro, com malha técnica e a última versão em destaque               */
 /* -------------------------------------------------------------------------- */
 
-function Hero({ count, latest }: { count: number; latest?: ReleaseNote }) {
+function Hero({ notes }: { notes: ReleaseNote[] }) {
+  const latest = notes[0];
+  const totalItems = notes.reduce((sum, n) => sum + n.entries.length, 0);
+  const products = new Set(
+    notes.flatMap((n) => n.entries.map((e) => e.produto.trim()).filter(Boolean)),
+  );
+
   return (
-    <section className="relative overflow-hidden border-b border-border-subtle bg-background-elevated">
+    <section className="relative overflow-hidden bg-brand-dark pb-28 pt-32 sm:pb-36 sm:pt-40">
+      {/* Malha de grade + auroras da marca */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.14) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage:
+            "radial-gradient(75% 65% at 50% 0%, #000 35%, transparent 100%)",
+          WebkitMaskImage:
+            "radial-gradient(75% 65% at 50% 0%, #000 35%, transparent 100%)",
+        }}
+      />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "radial-gradient(60% 70% at 15% 0%, rgba(0,160,177,0.10), transparent 60%), radial-gradient(50% 60% at 100% 20%, rgba(251,176,64,0.08), transparent 65%)",
+            "radial-gradient(45% 55% at 12% 10%, rgba(0,160,177,0.38), transparent 70%), radial-gradient(40% 50% at 88% 0%, rgba(166,206,57,0.18), transparent 70%), radial-gradient(50% 60% at 60% 100%, rgba(251,176,64,0.12), transparent 70%)",
         }}
       />
-      <div className="relative mx-auto w-full max-w-[1080px] px-5 py-16 sm:px-8 sm:py-20">
-        <span className="inline-flex items-center gap-2 rounded-full border border-brand-primary/25 bg-brand-primary/8 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-brand-primary">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" aria-hidden />
-          Changelog Dataweb
+
+      <div className="relative mx-auto w-full max-w-[1120px] px-5 sm:px-8">
+        <span className="inline-flex items-center gap-2 rounded-full border border-brand-primary/40 bg-brand-primary/10 px-3.5 py-1.5 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-brand-primary backdrop-blur-sm">
+          <Radio className="h-3.5 w-3.5 animate-pulse motion-reduce:animate-none" aria-hidden />
+          Release notes
         </span>
-        <h1 className="mt-5 max-w-[18ch] text-balance text-[36px] font-semibold leading-[1.08] tracking-tight text-foreground-heading sm:text-[52px]">
-          Novidades &amp; atualizações dos produtos
+
+        <h1 className="mt-6 max-w-[16ch] text-balance text-[44px] font-semibold leading-[0.98] tracking-[-0.02em] text-white sm:text-[68px]">
+          O que há de novo
+          <span className="block bg-gradient-to-r from-brand-primary via-[#5FD4DE] to-brand-green bg-clip-text text-transparent">
+            nos seus produtos
+          </span>
         </h1>
-        <p className="mt-4 max-w-[58ch] text-[16px] leading-relaxed text-foreground-subtitle">
-          Reunimos aqui as melhorias, correções e novas funcionalidades das
-          nossas soluções, organizadas por versão.
+
+        <p className="mt-6 max-w-[56ch] text-[16.5px] leading-relaxed text-white/60">
+          Cada entrega, em um só lugar. Filtre pelo produto que você usa e veja
+          em segundos o que mudou no seu dia a dia.
         </p>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3 text-[13px] text-foreground-muted">
-          <span className="inline-flex items-center gap-2 rounded-regular border border-border-subtle bg-background-subtle px-3.5 py-2">
-            <strong className="text-[15px] font-semibold tabular-nums text-foreground-heading">
-              {count}
-            </strong>
-            {count === 1 ? "publicação" : "publicações"}
-          </span>
-          {latest ? (
-            <span className="inline-flex items-center gap-2 rounded-regular border border-border-subtle bg-background-subtle px-3.5 py-2">
-              Última versão
-              <Badge variant="primary" size="sm">
-                v{latest.version}
-              </Badge>
-              <span className="text-foreground-subtitle">
-                · {monthLabel(latest.month)} de {latest.year}
-              </span>
-            </span>
-          ) : null}
-        </div>
+        {/* Métricas do changelog */}
+        {notes.length > 0 ? (
+          <dl className="mt-12 grid max-w-[640px] grid-cols-3 gap-px overflow-hidden rounded-large border border-white/10 bg-white/10">
+            <HeroStat label="Entregas" value={totalItems} />
+            <HeroStat label="Produtos" value={products.size} />
+            <HeroStat
+              label="Última versão"
+              value={latest ? `v${latest.version}` : "—"}
+              accent
+            />
+          </dl>
+        ) : null}
       </div>
+
+      {/* Transição para o corpo claro */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-background"
+      />
     </section>
   );
 }
 
+function HeroStat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  accent?: boolean;
+}) {
+  return (
+    <div className="bg-brand-dark/80 px-5 py-4 backdrop-blur-sm">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/45">
+        {label}
+      </dt>
+      <dd
+        className={[
+          "mt-1.5 text-[26px] font-semibold tabular-nums leading-none tracking-tight sm:text-[30px]",
+          accent ? "text-brand-primary" : "text-white",
+        ].join(" ")}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
-/* Empty + Footer                                                              */
+/* Estado vazio                                                                 */
 /* -------------------------------------------------------------------------- */
 
 function EmptyState() {
   return (
-    <div className="mt-12 flex flex-col items-center justify-center gap-3 rounded-large border border-dashed border-border-default bg-background-elevated px-6 py-20 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-medium bg-brand-primary/10 text-brand-primary">
-        <Sparkles className="h-6 w-6" aria-hidden />
-      </span>
-      <h2 className="text-[17px] font-semibold tracking-tight text-foreground-heading">
-        Em breve, novidades por aqui
+    <div className="-mt-12 flex flex-col items-center gap-3 rounded-large border border-dashed border-border-default bg-background-elevated px-6 py-20 text-center">
+      <h2 className="text-[18px] font-semibold text-foreground-heading">
+        Nenhuma atualização publicada ainda
       </h2>
-      <p className="max-w-[44ch] text-[14px] leading-relaxed text-foreground-muted">
-        Ainda não há atualizações publicadas. Volte em breve para acompanhar a
-        evolução dos produtos Dataweb.
+      <p className="max-w-[46ch] text-[14px] leading-relaxed text-foreground-muted">
+        Assim que publicarmos a próxima entrega dos produtos Dataweb, ela
+        aparece aqui.
       </p>
     </div>
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Footer                                                                      */
+/* -------------------------------------------------------------------------- */
+
 function SiteFooter() {
   return (
     <footer className="border-t border-border-subtle bg-background-elevated">
-      <div className="mx-auto flex w-full max-w-[1080px] flex-col items-center justify-between gap-4 px-5 py-10 sm:flex-row sm:px-8">
+      <div className="mx-auto flex w-full max-w-[1120px] flex-col items-center justify-between gap-4 px-5 py-8 sm:flex-row sm:px-8">
         <Image
           src="/logo-dataweb.png"
           alt="Dataweb"
-          width={120}
-          height={32}
-          className="h-6 w-auto opacity-80"
+          width={110}
+          height={30}
+          className="h-6 w-auto opacity-70"
         />
         <p className="text-[12.5px] text-foreground-muted">
           © {new Date().getFullYear()} Dataweb. Todos os direitos reservados.
