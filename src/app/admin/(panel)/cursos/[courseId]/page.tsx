@@ -10,6 +10,7 @@ import {
   Clock,
   ListChecks,
   Pencil,
+  Play,
   Plus,
   Trash2,
   Video,
@@ -17,6 +18,7 @@ import {
 import { AdminPageHeader, EmptyState, Panel, StatTile } from "@/components/admin/AdminPrimitives";
 import { CourseFormDialog } from "@/components/admin/CourseFormDialog";
 import { LessonFormDialog } from "@/components/admin/LessonFormDialog";
+import { LessonPreviewDialog } from "@/components/admin/LessonPreviewDialog";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useAdminStore } from "@/lib/admin/store";
@@ -35,6 +37,8 @@ export default function CourseDetailAdminPage({
   const [courseDialog, setCourseDialog] = useState(false);
   const [lessonDialog, setLessonDialog] = useState(false);
   const [editingLesson, setEditingLesson] = useState<AdminLesson | null>(null);
+  // Aula em pré-visualização (operador assiste sem gerar progresso).
+  const [previewLesson, setPreviewLesson] = useState<AdminLesson | null>(null);
 
   const course = store.courses.find((c) => c.id === courseId);
   const lessons = store.lessonsForCourse(courseId);
@@ -244,6 +248,13 @@ export default function CourseDetailAdminPage({
                   >
                     <ArrowDown className="h-4 w-4" />
                   </IconButton>
+                  <IconButton
+                    label={lesson.videoUrl ? "Assistir a aula" : "Pré-visualizar a aula"}
+                    variant={lesson.videoUrl ? "active" : "default"}
+                    onClick={() => setPreviewLesson(lesson)}
+                  >
+                    <Play className="h-4 w-4" />
+                  </IconButton>
                   <IconButton label="Editar aula" onClick={() => openEditLesson(lesson)}>
                     <Pencil className="h-4 w-4" />
                   </IconButton>
@@ -266,6 +277,13 @@ export default function CourseDetailAdminPage({
         onClose={() => setCourseDialog(false)}
         course={course}
       />
+      <LessonPreviewDialog
+        open={previewLesson !== null}
+        onClose={() => setPreviewLesson(null)}
+        lesson={previewLesson}
+        courseTitle={course?.title}
+      />
+
       <LessonFormDialog
         open={lessonDialog}
         onClose={() => setLessonDialog(false)}
@@ -300,7 +318,7 @@ function IconButton({
   children: React.ReactNode;
   label: string;
   onClick: () => void;
-  variant?: "default" | "danger";
+  variant?: "default" | "danger" | "active";
   disabled?: boolean;
 }) {
   return (
@@ -313,8 +331,10 @@ function IconButton({
       className={cn(
         "inline-flex h-9 w-9 items-center justify-center rounded-regular border border-border-subtle bg-background-elevated transition-colors disabled:cursor-not-allowed disabled:opacity-40",
         variant === "danger"
-          ? "text-foreground-muted hover:border-border-error hover:bg-background-error hover:text-foreground-error"
-          : "text-foreground-muted hover:border-border-default hover:bg-background-subtle hover:text-foreground",
+          ? "border-border-subtle bg-background-elevated text-foreground-muted hover:border-border-error hover:bg-background-error hover:text-foreground-error"
+          : variant === "active"
+            ? "border-brand-primary/30 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/15"
+            : "border-border-subtle bg-background-elevated text-foreground-muted hover:border-border-default hover:bg-background-subtle hover:text-foreground",
       )}
     >
       {children}
