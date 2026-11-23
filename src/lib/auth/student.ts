@@ -14,6 +14,7 @@ export type CurrentStudent = {
   firstName: string;
   email: string;
   role: string;
+  companyId?: string;
   companyName?: string;
 };
 
@@ -45,6 +46,7 @@ export async function getCurrentStudent(): Promise<CurrentStudent | null> {
     firstName: name.split(" ")[0] ?? name,
     email: user.email,
     role: member?.jobTitle || "Aluno",
+    companyId: company?.id,
     companyName: company?.name,
   };
 }

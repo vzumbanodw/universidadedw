@@ -12,22 +12,33 @@ import {
   NewCourseModal,
   type AnnouncedCourse,
 } from "@/components/courses/NewCourseModal";
+import { SatisfactionSurveyModal } from "@/components/satisfaction/SatisfactionSurveyModal";
 
 export function DashboardShell({
   children,
   user = null,
   newCourses = [],
+  surveyPending = false,
 }: {
   children: ReactNode;
   user?: CurrentUserView | null;
   /** Cursos recentes: base do aviso de novidade exibido ao aluno. */
   newCourses?: AnnouncedCourse[];
+  /** O aluno ainda não respondeu a Pesquisa de Satisfação. */
+  surveyPending?: boolean;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // A pesquisa vem primeiro; o aviso de curso novo espera ela sair da frente.
+  const [surveyActive, setSurveyActive] = useState(surveyPending);
 
   return (
     <CurrentUserProvider value={user}>
-    <NewCourseModal courses={newCourses} />
+    <SatisfactionSurveyModal
+      pending={surveyPending}
+      firstName={user?.firstName}
+      onSettled={() => setSurveyActive(false)}
+    />
+    <NewCourseModal courses={newCourses} paused={surveyActive} />
     <div className="min-h-screen bg-background-subtle text-foreground">
       <div className="flex min-h-screen">
         {/* Desktop sidebar */}

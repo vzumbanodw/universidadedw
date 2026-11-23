@@ -4,6 +4,7 @@ import { getCurrentStudent } from "@/lib/auth/student";
 import { readContent } from "@/lib/content/store.server";
 import type { CurrentUserView } from "@/components/auth/CurrentUserProvider";
 import type { AnnouncedCourse } from "@/components/courses/NewCourseModal";
+import { getSurveyStatus } from "@/lib/satisfaction/survey.server";
 
 /** Quantos cursos recentes alimentam o aviso de novidade (payload enxuto). */
 const ANNOUNCE_LIMIT = 12;
@@ -42,8 +43,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       estimatedMinutes: course.estimatedMinutes,
     }));
 
+  // Pesquisa de Satisfação: só aparece para quem ainda não respondeu.
+  const surveyPending = (await getSurveyStatus(student?.id)) === "pending";
+
   return (
-    <DashboardShell user={user} newCourses={newCourses}>
+    <DashboardShell user={user} newCourses={newCourses} surveyPending={surveyPending}>
       {children}
     </DashboardShell>
   );

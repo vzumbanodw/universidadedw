@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   GraduationCap,
   LogOut,
+  MessageSquareHeart,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ const SECTIONS: NavSection[] = [
     label: "Análise",
     items: [
       { label: "Relatórios", href: "/admin/relatorios", icon: BarChart3 },
+      { label: "Pesquisa de satisfação", href: "/admin/pesquisa", icon: MessageSquareHeart },
       { label: "Histórico", href: "/admin/historico", icon: History },
       { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
     ],

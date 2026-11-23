@@ -31,11 +31,19 @@ const STORAGE_KEY = "udw:cursos-anunciados";
  * partir daí, qualquer curso publicado que não esteja nessa lista dispara o
  * modal. O controle é por navegador (localStorage), sem depender de backend.
  */
-export function NewCourseModal({ courses }: { courses: AnnouncedCourse[] }) {
+export function NewCourseModal({
+  courses,
+  paused = false,
+}: {
+  courses: AnnouncedCourse[];
+  /** Outro aviso prioritário (Pesquisa de Satisfação) está na frente. */
+  paused?: boolean;
+}) {
   const [pending, setPending] = useState<AnnouncedCourse[]>([]);
 
   useEffect(() => {
-    if (courses.length === 0) return;
+    // Não marca nada como visto enquanto estiver em espera.
+    if (paused || courses.length === 0) return;
 
     let seen: string[] = [];
     let firstVisit = true;
@@ -66,7 +74,7 @@ export function NewCourseModal({ courses }: { courses: AnnouncedCourse[] }) {
     // Marca todos como vistos já na exibição: o aviso não volta se a pessoa
     // fechar a aba sem interagir.
     persist([...seen, ...unseen.map((c) => c.id)]);
-  }, [courses]);
+  }, [courses, paused]);
 
   function persist(ids: string[]) {
     try {
