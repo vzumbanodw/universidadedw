@@ -16,13 +16,21 @@ import { cn } from "@/lib/utils";
 import {
   RATING_MAX,
   RATING_MIN,
-  SURVEY_ID,
   SURVEY_QUESTIONS,
   TEXT_MAX,
   ratingTone,
+  validateSurveyAnswers,
+  type SurveyFieldError,
 } from "@/lib/satisfaction/survey";
 
-const POSTPONE_KEY = `udw:pesquisa-adiada:${SURVEY_ID}`;
+/** id do campo de cada pergunta (foco ao faltar resposta). */
+const FIELD_IDS = {
+  mostHelpfulLesson: "pesquisa-q1",
+  missingTopic: "pesquisa-q2",
+  easeRating: "pesquisa-q3",
+  improvement: "pesquisa-q4",
+} as const;
+
 const RATINGS = Array.from(
   { length: RATING_MAX - RATING_MIN + 1 },
   (_, i) => RATING_MIN + i,
@@ -36,44 +44,51 @@ const RATING_FEEDBACK = {
 } as const;
 
 /**
- * Pesquisa de Satisfação — primeira coisa que o aluno vê ao entrar no
- * Universidade, até responder. Quem já respondeu nunca mais a vê (decidido no
- * servidor, vale para qualquer dispositivo). "Responder depois" adia só até a
- * próxima vez que a pessoa acessar.
+ * Pesquisa de Satisfação — OBRIGATÓRIA para quem já concluiu pelo menos 2
+ * aulas: não dá para adiar nem fechar antes de enviar. Quem decide se ela
+ * aparece é o servidor (`getSurveyStatus`), então vale para qualquer
+ * dispositivo; depois de respondida, só volta 3 meses após a resposta.
+ *
+ * Abre na entrada e também no meio da sessão: ao concluir uma aula o player
+ * faz `router.refresh()`, o layout recalcula o status e `pending` vira true.
  */
 export function SatisfactionSurveyModal({
   pending,
   firstName,
   onSettled,
 }: {
-  /** O servidor confirmou que esta pessoa ainda não respondeu. */
+  /** O servidor confirmou que esta pessoa precisa responder agora. */
   pending: boolean;
   firstName?: string;
-  /** Chamado quando a pesquisa sai da frente (adiada, respondida ou não aplicável). */
+  /** Chamado quando a pesquisa sai da frente (respondida ou não aplicável). */
   onSettled: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Pergunta que faltou responder (destaque + foco).
+  const [missingField, setMissingField] = useState<SurveyFieldError["field"] | null>(null);
+  // Válvula de segurança: se o envio falhar por erro NOSSO (servidor/rede), o
+  // aluno não fica preso — pode seguir e a pesquisa volta na próxima entrada.
+  const [canDefer, setCanDefer] = useState(false);
   const [mostHelpfulLesson, setMostHelpfulLesson] = useState("");
   const [missingTopic, setMissingTopic] = useState("");
   const [easeRating, setEaseRating] = useState<number | null>(null);
   const [improvement, setImprovement] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
 
+  const settledRef = useRef(false);
   useEffect(() => {
-    let postponed = false;
-    try {
-      postponed = window.sessionStorage.getItem(POSTPONE_KEY) === "1";
-    } catch {
-      /* sem storage: exibe normalmente */
+    if (pending) {
+      setOpen(true);
+    } else if (!settledRef.current) {
+      // Não aplicável nesta entrada: libera os outros avisos (uma vez só).
+      settledRef.current = true;
+      onSettled();
     }
-    if (pending && !postponed) setOpen(true);
-    else onSettled();
-    // Decide uma única vez, na entrada.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pending]);
 
   useEffect(() => {
     if (!open) return;
@@ -86,27 +101,31 @@ export function SatisfactionSurveyModal({
 
   function close() {
     setOpen(false);
+    settledRef.current = true;
     onSettled();
   }
 
-  function postpone() {
-    try {
-      window.sessionStorage.setItem(POSTPONE_KEY, "1");
-    } catch {
-      /* sem storage: volta a aparecer no próximo carregamento */
-    }
-    close();
-  }
-
   async function submit() {
-    if (easeRating === null) {
-      setError("Escolha uma nota de 1 a 10 para a navegação.");
-      panelRef.current
-        ?.querySelector<HTMLButtonElement>('[role="radio"][tabindex="0"]')
-        ?.focus();
+    // Todas as perguntas são obrigatórias: foca a primeira que faltou.
+    const invalid = validateSurveyAnswers({
+      mostHelpfulLesson,
+      missingTopic,
+      easeRating,
+      improvement,
+    });
+    if (invalid) {
+      setError(invalid.message);
+      setMissingField(invalid.field);
+      const target =
+        invalid.field === "easeRating"
+          ? panelRef.current?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')
+          : panelRef.current?.querySelector<HTMLElement>(`#${FIELD_IDS[invalid.field]}`);
+      target?.focus();
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
     }
     setError(null);
+    setMissingField(null);
     setSubmitting(true);
     try {
       const res = await fetch("/api/satisfaction", {
@@ -121,14 +140,22 @@ export function SatisfactionSurveyModal({
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         setError(data.error ?? "Não foi possível enviar. Tente novamente.");
+        if (res.status >= 500) setCanDefer(true);
         return;
       }
       setSubmitted(true);
     } catch {
       setError("Falha de rede. Verifique a conexão e tente novamente.");
+      setCanDefer(true);
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function clearMissing(field: SurveyFieldError["field"]) {
+    if (missingField !== field) return;
+    setMissingField(null);
+    setError(null);
   }
 
   if (!open) return null;
@@ -146,11 +173,12 @@ export function SatisfactionSurveyModal({
       aria-modal="true"
       aria-labelledby="pesquisa-titulo"
       onKeyDown={(event) => {
-        if (event.key === "Escape") (submitted ? close : postpone)();
+        // Obrigatória: o Esc só fecha depois do envio.
+        if (event.key === "Escape" && submitted) close();
       }}
       className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-6"
     >
-      {/* Fundo não fecha ao clicar: evita perder respostas já digitadas. */}
+      {/* Fundo não fecha ao clicar: a pesquisa é obrigatória. */}
       <div
         aria-hidden
         className="absolute inset-0 bg-brand-dark/60 backdrop-blur-sm animate-fade-in"
@@ -161,11 +189,7 @@ export function SatisfactionSurveyModal({
         tabIndex={-1}
         className="relative z-10 flex max-h-[94vh] w-full max-w-[620px] flex-col overflow-hidden rounded-t-large bg-background-elevated shadow-elevation-xl outline-none animate-fade-in-up motion-reduce:animate-none sm:rounded-large"
       >
-        <SurveyHeader
-          firstName={firstName}
-          submitted={submitted}
-          onClose={submitted ? close : postpone}
-        />
+        <SurveyHeader firstName={firstName} submitted={submitted} onClose={close} />
 
         {submitted ? (
           <ThankYou firstName={firstName} onClose={close} />
@@ -186,12 +210,17 @@ export function SatisfactionSurveyModal({
                   id="pesquisa-q1"
                   label={SURVEY_QUESTIONS.mostHelpfulLesson}
                   done={Boolean(mostHelpfulLesson.trim())}
+                  required
+                  error={missingField === "mostHelpfulLesson" ? error : null}
                 >
                   <Input
                     id="pesquisa-q1"
                     value={mostHelpfulLesson}
                     maxLength={TEXT_MAX}
-                    onChange={(e) => setMostHelpfulLesson(e.target.value)}
+                    onChange={(e) => {
+                      setMostHelpfulLesson(e.target.value);
+                      clearMissing("mostHelpfulLesson");
+                    }}
                     placeholder="Ex.: Abertura e fechamento de caixa"
                   />
                 </Question>
@@ -201,13 +230,18 @@ export function SatisfactionSurveyModal({
                   id="pesquisa-q2"
                   label={SURVEY_QUESTIONS.missingTopic}
                   done={Boolean(missingTopic.trim())}
+                  required
+                  error={missingField === "missingTopic" ? error : null}
                 >
                   <Textarea
                     id="pesquisa-q2"
                     rows={2}
                     value={missingTopic}
                     maxLength={TEXT_MAX}
-                    onChange={(e) => setMissingTopic(e.target.value)}
+                    onChange={(e) => {
+                      setMissingTopic(e.target.value);
+                      clearMissing("missingTopic");
+                    }}
                     placeholder="Um tema, uma rotina, um produto que você gostaria de aprender"
                   />
                 </Question>
@@ -218,13 +252,14 @@ export function SatisfactionSurveyModal({
                   label={SURVEY_QUESTIONS.easeRating}
                   done={easeRating !== null}
                   required
+                  error={missingField === "easeRating" ? error : null}
                 >
                   <RatingScale
                     labelledBy="pesquisa-q3-label"
                     value={easeRating}
                     onChange={(value) => {
                       setEaseRating(value);
-                      setError(null);
+                      clearMissing("easeRating");
                     }}
                   />
                 </Question>
@@ -234,18 +269,24 @@ export function SatisfactionSurveyModal({
                   id="pesquisa-q4"
                   label={SURVEY_QUESTIONS.improvement}
                   done={Boolean(improvement.trim())}
+                  required
+                  error={missingField === "improvement" ? error : null}
                 >
                   <Textarea
                     id="pesquisa-q4"
                     rows={3}
                     value={improvement}
                     maxLength={TEXT_MAX}
-                    onChange={(e) => setImprovement(e.target.value)}
+                    onChange={(e) => {
+                      setImprovement(e.target.value);
+                      clearMissing("improvement");
+                    }}
                     placeholder="Conte para a gente as suas sugestões e ideias"
                   />
                 </Question>
 
-                {error ? <FormError message={error} /> : null}
+                {/* Erro de envio (servidor/rede); falta de resposta aparece na pergunta. */}
+                {error && !missingField ? <FormError message={error} /> : null}
               </div>
             </div>
 
@@ -255,9 +296,11 @@ export function SatisfactionSurveyModal({
                 Sua resposta chega ao time Dataweb com seu nome e empresa.
               </p>
               <div className="flex shrink-0 items-center gap-2.5">
-                <Button variant="ghost" onClick={postpone} className="flex-1 sm:flex-none">
-                  Responder depois
-                </Button>
+                {canDefer ? (
+                  <Button variant="ghost" onClick={close} className="flex-1 sm:flex-none">
+                    Tentar mais tarde
+                  </Button>
+                ) : null}
                 <Button
                   onClick={submit}
                   loading={submitting}
@@ -304,14 +347,17 @@ function SurveyHeader({
           <span className="h-1.5 w-1.5 rounded-full bg-brand-orange" aria-hidden />
           Pesquisa de satisfação
         </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={submitted ? "Fechar" : "Responder depois"}
-          className="-mr-1.5 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-regular text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white"
-        >
-          <X className="h-[18px] w-[18px]" />
-        </button>
+        {/* Obrigatória: só dá para fechar depois de enviar. */}
+        {submitted ? (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="-mr-1.5 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-regular text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white"
+          >
+            <X className="h-[18px] w-[18px]" />
+          </button>
+        ) : null}
       </div>
 
       {!submitted ? (
@@ -327,8 +373,8 @@ function SurveyHeader({
             ?
           </h2>
           <p className="mt-2.5 text-[13.5px] leading-relaxed text-white/70">
-            A Universidade Dataweb foi criada para facilitar a rotina de quem faz
-            parte do nosso universo. Sua opinião define as próximas aulas —{" "}
+            Você já concluiu algumas aulas — antes de continuar, conte para a
+            gente como foi. Sua opinião define as próximas aulas e{" "}
             <strong className="font-semibold text-white">leva menos de 1 minuto</strong>.
           </p>
         </div>
@@ -347,6 +393,7 @@ function Question({
   label,
   done,
   required,
+  error,
   children,
 }: {
   number: number;
@@ -354,10 +401,17 @@ function Question({
   label: string;
   done: boolean;
   required?: boolean;
+  /** Mensagem quando ficou sem resposta ao tentar enviar. */
+  error?: string | null;
   children: ReactNode;
 }) {
   return (
-    <div className="flex gap-3.5">
+    <div
+      className={cn(
+        "-mx-3 flex gap-3.5 rounded-regular border px-3 py-2 transition-colors",
+        error ? "border-border-error bg-background-error" : "border-transparent",
+      )}
+    >
       <span
         aria-hidden
         className={cn(
@@ -383,6 +437,11 @@ function Question({
           ) : null}
         </label>
         {children}
+        {error ? (
+          <p role="alert" className="text-[12.5px] font-medium text-foreground-error">
+            {error}
+          </p>
+        ) : null}
       </div>
     </div>
   );

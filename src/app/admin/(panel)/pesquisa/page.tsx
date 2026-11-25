@@ -29,10 +29,13 @@ import { Select } from "@/components/ui/Select";
 import { useAdminStore } from "@/lib/admin/store";
 import { cn } from "@/lib/utils";
 import {
+  MIN_COMPLETED_LESSONS,
   RATING_MAX,
   RATING_MIN,
+  RENEWAL_MONTHS,
   SURVEY_QUESTIONS,
   SURVEY_SHORT_LABELS,
+  nextSurveyDate,
   ratingTone,
   type SurveyResponse,
 } from "@/lib/satisfaction/survey";
@@ -72,6 +75,13 @@ function formatDateTime(iso: string): string {
   }
 }
 
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(date);
+}
+
 function average(values: number[]): number | null {
   if (values.length === 0) return null;
   return values.reduce((sum, v) => sum + v, 0) / values.length;
@@ -92,6 +102,7 @@ async function exportResponses(
       Nome: r.studentName,
       "E-mail": r.studentEmail,
       "Respondido em": formatDateTime(r.createdAt),
+      Resposta: `${r.round}ª`,
       [SURVEY_QUESTIONS.mostHelpfulLesson]: r.mostHelpfulLesson,
       [SURVEY_QUESTIONS.missingTopic]: r.missingTopic,
       [`${SURVEY_QUESTIONS.easeRating} (1 a 10)`]: r.easeRating,
@@ -122,7 +133,7 @@ export default function PesquisaPage() {
   async function removeResponse(response: SurveyResponse) {
     setDeleteError(null);
     const res = await fetch(
-      `/api/admin/satisfaction?studentId=${encodeURIComponent(response.studentId)}`,
+      `/api/admin/satisfaction?id=${encodeURIComponent(response.id)}`,
       { method: "DELETE" },
     ).catch(() => null);
     if (!res?.ok) {
@@ -130,8 +141,18 @@ export default function PesquisaPage() {
       setDeleteError(data?.error ?? "Não foi possível remover a resposta. Tente novamente.");
       return;
     }
-    setResponses((current) => current.filter((r) => r.studentId !== response.studentId));
+    setResponses((current) => current.filter((r) => r.id !== response.id));
   }
+
+  // Resposta mais recente de cada pessoa: é dela que sai a data da próxima pesquisa.
+  const latestIds = useMemo(() => {
+    const latest = new Map<string, SurveyResponse>();
+    for (const r of responses) {
+      const current = latest.get(r.studentId);
+      if (!current || r.round > current.round) latest.set(r.studentId, r);
+    }
+    return new Set([...latest.values()].map((r) => r.id));
+  }, [responses]);
 
   useEffect(() => {
     let active = true;
@@ -272,7 +293,7 @@ export default function PesquisaPage() {
       <AdminPageHeader
         breadcrumb={[{ label: "Backoffice", href: "/admin" }, { label: "Pesquisa de satisfação" }]}
         title="Pesquisa de satisfação"
-        description="Respostas enviadas pelos alunos ao entrar no Universidade, organizadas por empresa e pessoa. Quem responde não vê mais o formulário."
+        description={`Respostas dos alunos, organizadas por empresa e pessoa. A pesquisa é obrigatória a partir de ${MIN_COMPLETED_LESSONS} aulas concluídas e volta ${RENEWAL_MONTHS} meses depois de cada resposta — cada envio fica registrado aqui.`}
         actions={
           responses.length > 0 ? (
             <>
@@ -322,7 +343,7 @@ export default function PesquisaPage() {
         <EmptyState
           icon={MessageSquareHeart}
           title="Nenhuma resposta ainda"
-          description="A pesquisa aparece para cada aluno ao entrar no Universidade. As respostas chegam aqui, identificadas por pessoa e empresa."
+          description={`A pesquisa aparece, obrigatória, para quem já concluiu ${MIN_COMPLETED_LESSONS} aulas. As respostas chegam aqui, identificadas por pessoa e empresa.`}
         />
       ) : (
         <>
@@ -380,7 +401,12 @@ export default function PesquisaPage() {
           ) : (
             <div className="flex flex-col gap-5">
               {visibleGroups.map((group) => (
-                <CompanyResponses key={group.key} group={group} onDelete={setToDelete} />
+                <CompanyResponses
+                  key={group.key}
+                  group={group}
+                  latestIds={latestIds}
+                  onDelete={setToDelete}
+                />
               ))}
             </div>
           )}
@@ -397,10 +423,14 @@ export default function PesquisaPage() {
         title="Remover resposta"
         description={
           toDelete
-            ? `A resposta de ${toDelete.studentName} (${toDelete.studentEmail}) será apagada e a pesquisa volta a aparecer para essa pessoa na próxima entrada.`
+            ? `A ${toDelete.round}ª resposta de ${toDelete.studentName} (${toDelete.studentEmail}), enviada em ${formatDateTime(toDelete.createdAt)}, será apagada.${
+                latestIds.has(toDelete.id)
+                  ? " Como é a mais recente, a pesquisa volta a aparecer para essa pessoa na próxima entrada."
+                  : ""
+              }`
             : ""
         }
-        target={`pesquisa de satisfação: resposta de ${toDelete?.studentEmail ?? ""}`}
+        target={`pesquisa de satisfação: ${toDelete?.round ?? ""}ª resposta de ${toDelete?.studentEmail ?? ""}`}
         confirmLabel="Remover resposta"
         onConfirmed={() => (toDelete ? removeResponse(toDelete) : undefined)}
       />
@@ -465,15 +495,21 @@ function RatingDistribution({ responses }: { responses: SurveyResponse[] }) {
 
 function CompanyResponses({
   group,
+  latestIds,
   onDelete,
 }: {
   group: CompanyGroup;
+  latestIds: Set<string>;
   onDelete: (response: SurveyResponse) => void;
 }) {
   const [showPending, setShowPending] = useState(false);
+  // Pessoas (não registros): quem respondeu 2 vezes conta uma vez só.
   const respondedShare =
     group.eligible > 0
-      ? Math.min(100, Math.round((group.responses.length / group.eligible) * 100))
+      ? Math.min(
+          100,
+          Math.round(((group.eligible - group.pending.length) / group.eligible) * 100),
+        )
       : null;
 
   return (
@@ -532,8 +568,9 @@ function CompanyResponses({
       <ul className="divide-y divide-border-subtle">
         {group.responses.map((response) => (
           <ResponseRow
-            key={response.studentId}
+            key={response.id}
             response={response}
+            isLatest={latestIds.has(response.id)}
             onDelete={() => onDelete(response)}
           />
         ))}
@@ -575,11 +612,15 @@ function CompanyResponses({
 
 function ResponseRow({
   response,
+  isLatest,
   onDelete,
 }: {
   response: SurveyResponse;
+  /** É a resposta mais recente da pessoa (mostra quando a pesquisa volta). */
+  isLatest: boolean;
   onDelete: () => void;
 }) {
+  const next = isLatest ? nextSurveyDate(response.createdAt) : null;
   const tone = ratingTone(response.easeRating);
   const answers = [
     { label: SURVEY_SHORT_LABELS.mostHelpfulLesson, value: response.mostHelpfulLesson },
@@ -593,12 +634,22 @@ function ResponseRow({
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={response.studentName} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-semibold text-foreground-heading">
-              {response.studentName}
+            <p className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-foreground-heading">
+              <span className="truncate">{response.studentName}</span>
+              <span className="shrink-0 rounded-full border border-border-subtle bg-background-subtle px-2 py-px text-[11px] font-medium text-foreground-subtitle">
+                {response.round}ª resposta
+              </span>
             </p>
             <p className="truncate text-[12px] text-foreground-muted">
               {response.studentEmail} · {formatDateTime(response.createdAt)}
             </p>
+            {next ? (
+              <p className="mt-0.5 text-[12px] text-foreground-muted">
+                {next.getTime() > Date.now()
+                  ? `Próxima pesquisa a partir de ${formatDate(next)}`
+                  : "Já pode responder a próxima pesquisa"}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">

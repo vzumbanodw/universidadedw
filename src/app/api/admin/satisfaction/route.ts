@@ -21,19 +21,19 @@ export async function GET() {
 }
 
 /**
- * Remove a resposta de uma pessoa (ex.: respostas de teste do time). A pessoa
- * volta a ver a pesquisa na próxima entrada.
+ * Remove UMA resposta (ex.: respostas de teste do time). Se era a mais recente
+ * da pessoa, a pesquisa volta a aparecer para ela na próxima entrada.
  */
 export async function DELETE(request: Request) {
   if (!(await getAdminSession())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const studentId = new URL(request.url).searchParams.get("studentId");
-  if (!studentId) {
-    return NextResponse.json({ error: "studentId obrigatório." }, { status: 400 });
+  const id = new URL(request.url).searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "id obrigatório." }, { status: 400 });
   }
   try {
-    await deleteSurveyResponse(studentId);
+    await deleteSurveyResponse(id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(

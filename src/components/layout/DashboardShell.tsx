@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./AppTopbar";
 import { MobileNavigation } from "./MobileNavigation";
@@ -30,6 +30,10 @@ export function DashboardShell({
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   // A pesquisa vem primeiro; o aviso de curso novo espera ela sair da frente.
   const [surveyActive, setSurveyActive] = useState(surveyPending);
+  // Pode ficar pendente no meio da sessão (ex.: acabou de concluir a 2ª aula).
+  useEffect(() => {
+    if (surveyPending) setSurveyActive(true);
+  }, [surveyPending]);
 
   return (
     <CurrentUserProvider value={user}>
